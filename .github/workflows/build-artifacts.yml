@@ -1,0 +1,110 @@
+name: Build Artifacts
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Make scripts executable
+        run: |
+          chmod +x build.sh
+          chmod +x scripts/build
+          chmod +x scripts/*.sh
+
+      - name: Check formatting (gofmt)
+        run: |
+          files=$(find . -name '*.go' -not -path './dist/*' -not -path './data/*')
+          test -n "$files"
+          unformatted=$(gofmt -l $files)
+          if [ -n "$unformatted" ]; then
+            echo "Unformatted files:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Go vet
+        run: go vet ./...
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build packages and binaries
+        run: ./build.sh
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kimmio-launcher-dist-${{ github.run_number }}
+          path: dist/**
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Windows exe files
+        uses: actions/upload-artifact@v4
+        with:
+          name: kimmio-launcher-exe-${{ github.run_number }}
+          path: |
+            dist/windows/**/*.exe
+            dist/binaries/*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  windows-installer:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build Windows app package
+        shell: bash
+        run: |
+          short_sha="${GITHUB_SHA::7}"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            app_version="${GITHUB_REF_NAME#v}"
+          else
+            app_version="0.0.0-${short_sha}"
+          fi
+          echo "APP_VERSION=${app_version}" >> "$GITHUB_ENV"
+          echo "APP_COMMIT=${short_sha}" >> "$GITHUB_ENV"
+          chmod +x scripts/build-windows-app.sh
+          VERSION="${app_version}" GIT_COMMIT="${short_sha}" scripts/build-windows-app.sh
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup --no-progress -y
+
+      - name: Build Windows installer
+        shell: powershell
+        run: |
+          iscc /DAppVersion=$env:APP_VERSION /DAppExeName=KimmioLauncher.exe /DSourceDir="dist\\windows\\Kimmio Launcher" /DOutputDir=dist scripts\\windows-installer.iss
+
+      - name: Upload Windows setup installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: kimmio-launcher-setup-${{ github.run_number }}
+          path: dist/Kimmio-Launcher-Setup-windows-amd64.exe
+          if-no-files-found: error
+          retention-days: 14

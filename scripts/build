@@ -1,0 +1,198 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+DIST_DIR="$ROOT_DIR/dist"
+BIN_DIR="$DIST_DIR/binaries"
+APP_NAME="${APP_NAME:-luncher}"
+CLEAN_DIST="${CLEAN_DIST:-1}"
+LICENSE_FILE=""
+VERSION="${VERSION:-}"
+GIT_COMMIT="${GIT_COMMIT:-}"
+
+for candidate in "LICENSE" "LICENSE.md" "license.txt" "COPYING" "COPYING.md"; do
+  if [[ -f "$ROOT_DIR/$candidate" ]]; then
+    LICENSE_FILE="$ROOT_DIR/$candidate"
+    break
+  fi
+done
+
+if [[ -z "$GIT_COMMIT" ]]; then
+  GIT_COMMIT="$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")"
+fi
+if [[ -z "$VERSION" ]]; then
+  TAG="$(git -C "$ROOT_DIR" describe --tags --exact-match 2>/dev/null || true)"
+  if [[ -n "$TAG" ]]; then
+    VERSION="${TAG#v}"
+  else
+    VERSION="0.0.0-${GIT_COMMIT}"
+  fi
+fi
+export VERSION
+export GIT_COMMIT
+
+if [[ "$CLEAN_DIST" == "1" ]]; then
+  rm -rf "$DIST_DIR"
+fi
+
+mkdir -p "$DIST_DIR" "$BIN_DIR"
+
+echo "Building desktop packages..."
+"$SCRIPT_DIR/build-macos-app.sh"
+"$SCRIPT_DIR/build-linux-app.sh"
+"$SCRIPT_DIR/build-windows-app.sh"
+
+echo "Building selected cross-platform binaries..."
+
+TARGETS=(
+  "darwin/amd64"
+  "darwin/arm64"
+  "linux/amd64"
+  "linux/arm64"
+  "windows/amd64"
+)
+
+FAILURES=0
+for target in "${TARGETS[@]}"; do
+  GOOS="${target%%/*}"
+  GOARCH="${target##*/}"
+  EXT=""
+  if [[ "$GOOS" == "windows" ]]; then
+    EXT=".exe"
+  fi
+
+  OUT_PATH="$BIN_DIR/${APP_NAME}-${GOOS}-${GOARCH}${EXT}"
+  echo "-> $GOOS/$GOARCH"
+  if ! (
+    cd "$ROOT_DIR"
+    LDFLAGS="-s -w -X main.appVersion=$VERSION -X main.gitCommit=$GIT_COMMIT"
+    CGO_ENABLED=0 GOOS="$GOOS" GOARCH="$GOARCH" \
+      go build -trimpath -ldflags="$LDFLAGS" -o "$OUT_PATH" ./cmd/luncher
+  ); then
+    echo "   FAILED: $GOOS/$GOARCH"
+    FAILURES=$((FAILURES + 1))
+  fi
+done
+
+if [[ "$FAILURES" -gt 0 ]]; then
+  echo "Completed with $FAILURES failed target(s)."
+  exit 1
+fi
+
+if [[ -n "$LICENSE_FILE" ]]; then
+  cp "$LICENSE_FILE" "$BIN_DIR/LICENSE.txt"
+else
+  echo "Warning: no license file found in project root; skipping license copy for raw binaries output."
+fi
+
+echo "All builds completed successfully."
+echo "Packages: $DIST_DIR"
+echo "Binaries: $BIN_DIR"
+
+MANIFEST_PATH="$DIST_DIR/map.json"
+timestamp="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+entries=()
+
+json_escape() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+add_entry() {
+  local platform="$1"
+  local artifact_type="$2"
+  local name="$3"
+  local rel_path="$4"
+  local recommended="${5:-false}"
+  entries+=("{\"platform\":\"$(json_escape "$platform")\",\"type\":\"$(json_escape "$artifact_type")\",\"name\":\"$(json_escape "$name")\",\"path\":\"$(json_escape "$rel_path")\",\"recommended\":${recommended}}")
+}
+
+if [[ -d "$DIST_DIR/Kimmio Launcher.app" ]]; then
+  add_entry "darwin/arm64" "desktop-app" "Kimmio Launcher.app" "Kimmio Launcher.app" "true"
+fi
+if [[ -d "$DIST_DIR/Kimmio Launcher Dock.app" ]]; then
+  add_entry "darwin/arm64" "desktop-app" "Kimmio Launcher Dock.app" "Kimmio Launcher Dock.app"
+fi
+if [[ -f "$DIST_DIR/Kimmio-Launcher-windows-amd64.zip" ]]; then
+  add_entry "windows/amd64" "archive" "Kimmio-Launcher-windows-amd64.zip" "Kimmio-Launcher-windows-amd64.zip"
+fi
+if [[ -f "$DIST_DIR/Kimmio-Launcher-Setup-windows-amd64.exe" ]]; then
+  add_entry "windows/amd64" "installer" "Kimmio-Launcher-Setup-windows-amd64.exe" "Kimmio-Launcher-Setup-windows-amd64.exe" "true"
+fi
+linux_archive_name="Kimmio-Launcher-${VERSION}-linux-amd64.tar.gz"
+if [[ -f "$DIST_DIR/$linux_archive_name" ]]; then
+  add_entry "linux/amd64" "archive" "$linux_archive_name" "$linux_archive_name" "true"
+fi
+linux_appimage_name="Kimmio-Launcher-${VERSION}-linux-amd64.AppImage"
+if [[ -f "$DIST_DIR/$linux_appimage_name" ]]; then
+  add_entry "linux/amd64" "appimage" "$linux_appimage_name" "$linux_appimage_name" "true"
+fi
+
+if [[ -f "$DIST_DIR/windows/Kimmio Launcher/KimmioLauncher.exe" ]]; then
+  add_entry "windows/amd64" "installer-binary" "KimmioLauncher.exe" "windows/Kimmio Launcher/KimmioLauncher.exe"
+fi
+
+shopt -s nullglob
+for bin in "$BIN_DIR"/${APP_NAME}-*; do
+  base="$(basename "$bin")"
+  rel="${bin#$DIST_DIR/}"
+  ext=""
+  if [[ "$base" == *.exe ]]; then
+    ext=".exe"
+  fi
+  no_ext="$base"
+  if [[ "$ext" == ".exe" ]]; then
+    no_ext="${base%.exe}"
+  fi
+  os_arch="${no_ext#${APP_NAME}-}"
+  os="${os_arch%-*}"
+  arch="${os_arch##*-}"
+  if [[ -n "$os" && -n "$arch" && "$os" != "$os_arch" ]]; then
+    add_entry "$os/$arch" "binary" "$base" "$rel"
+  fi
+done
+shopt -u nullglob
+
+{
+  echo "{"
+  echo "  \"generatedAt\": \"${timestamp}\","
+  echo "  \"version\": \"$(json_escape "$VERSION")\","
+  echo "  \"commit\": \"$(json_escape "$GIT_COMMIT")\","
+  echo "  \"artifacts\": ["
+  for i in "${!entries[@]}"; do
+    sep=","
+    if [[ "$i" -eq $((${#entries[@]} - 1)) ]]; then
+      sep=""
+    fi
+    echo "    ${entries[$i]}${sep}"
+  done
+  echo "  ]"
+  echo "}"
+} > "$MANIFEST_PATH"
+
+echo "Build artifact map generated: $MANIFEST_PATH"
+
+CHECKSUMS_PATH="$DIST_DIR/checksums.txt"
+hash_file() {
+  local file="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file" | awk '{print $1}'
+    return
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$file" | awk '{print $1}'
+    return
+  fi
+  return 1
+}
+
+: > "$CHECKSUMS_PATH"
+while IFS= read -r file; do
+  rel="${file#$DIST_DIR/}"
+  digest="$(hash_file "$file")"
+  if [[ -n "$digest" ]]; then
+    printf "%s  %s\n" "$digest" "$rel" >> "$CHECKSUMS_PATH"
+  fi
+done < <(find "$DIST_DIR" -type f ! -name "checksums.txt" | sort)
+
+echo "Checksums written: $CHECKSUMS_PATH"
