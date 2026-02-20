@@ -57,6 +57,7 @@ SAFE_NAME="${APP_NAME// /-}"
 APPDIR="$ROOT_DIR/$OUT_DIR/linux/${SAFE_NAME}.AppDir"
 BIN_PATH="$APPDIR/usr/bin/$BIN_NAME"
 DESKTOP_FILE="$APPDIR/${BIN_NAME}.desktop"
+ADMIN_DESKTOP_FILE="$APPDIR/${BIN_NAME}-admin.desktop"
 APPIMAGE_PATH="$ROOT_DIR/$OUT_DIR/${SAFE_NAME}-${VERSION}-linux-amd64.AppImage"
 TAR_PATH="$ROOT_DIR/$OUT_DIR/${SAFE_NAME}-${VERSION}-linux-amd64.tar.gz"
 DEB_PATH="$ROOT_DIR/$OUT_DIR/${SAFE_NAME}-${VERSION}-linux-amd64.deb"
@@ -98,6 +99,17 @@ Terminal=true
 Categories=Utility;
 EOF
 cp "$DESKTOP_FILE" "$APPDIR/usr/share/applications/${BIN_NAME}.desktop"
+
+cat > "$ADMIN_DESKTOP_FILE" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$APP_NAME (Admin)
+Exec=pkexec $BIN_NAME
+Icon=AppIcon
+Terminal=true
+Categories=Utility;
+EOF
+cp "$ADMIN_DESKTOP_FILE" "$APPDIR/usr/share/applications/${BIN_NAME}-admin.desktop"
 
 if [[ -n "$ICON_PNG" ]]; then
   if [[ ! -f "$ICON_PNG" ]]; then
@@ -170,6 +182,16 @@ Terminal=true
 Categories=Utility;
 EOF
 
+  cat > "$DEB_ROOT/usr/share/applications/kimmio-launcher-admin.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$APP_NAME (Admin)
+Exec=pkexec /opt/kimmio-launcher/kimmio-launcher
+Icon=kimmio-launcher
+Terminal=true
+Categories=Utility;
+EOF
+
   if [[ -n "$ICON_PNG" && -f "$ICON_PNG" ]]; then
     cp "$ICON_PNG" "$DEB_ROOT/usr/share/icons/hicolor/512x512/apps/kimmio-launcher.png"
   fi
@@ -203,6 +225,16 @@ EOF
 Type=Application
 Name=$APP_NAME
 Exec=/opt/kimmio-launcher/kimmio-launcher
+Icon=kimmio-launcher
+Terminal=true
+Categories=Utility;
+EOF
+
+  cat > "$DEB_ROOT_ARM64/usr/share/applications/kimmio-launcher-admin.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$APP_NAME (Admin)
+Exec=pkexec /opt/kimmio-launcher/kimmio-launcher
 Icon=kimmio-launcher
 Terminal=true
 Categories=Utility;

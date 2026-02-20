@@ -152,6 +152,7 @@ func printStartupBanner(url string) {
 		fmt.Println("Kimmio Launcher")
 		fmt.Println("Welcome to Kimmio Launcher")
 		fmt.Printf("To visit it go to URL: %s\n", url)
+		fmt.Println(url)
 		return
 	}
 
@@ -166,6 +167,10 @@ func printStartupBanner(url string) {
 	fmt.Printf("%s%sKimmio Launcher%s\n", bold, cyan, reset)
 	fmt.Printf("%sWelcome to Kimmio Launcher%s\n", green, reset)
 	fmt.Printf("%sTo visit it go to URL:%s %s%s%s\n", brightGray, reset, bold, url, reset)
+	// Standalone URL line improves click-detection in Linux terminals.
+	fmt.Println(url)
+	// OSC 8 hyperlink (supported by many modern terminals).
+	fmt.Printf("\033]8;;%s\033\\Open Kimmio Launcher\033]8;;\033\\\n", url)
 }
 
 func openBrowserWhenReachable(port int, maxWait time.Duration) {

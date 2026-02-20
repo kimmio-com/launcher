@@ -90,6 +90,20 @@ func chooseLauncherAssetURL(release githubRelease, goos, goarch string) string {
 	if len(release.Assets) == 0 {
 		return ""
 	}
+
+	findAsset := func(match func(name string) bool) string {
+		for _, asset := range release.Assets {
+			name := strings.ToLower(strings.TrimSpace(asset.Name))
+			if name == "" || asset.BrowserDownloadURL == "" {
+				continue
+			}
+			if match(name) {
+				return asset.BrowserDownloadURL
+			}
+		}
+		return ""
+	}
+
 	for _, asset := range release.Assets {
 		name := strings.ToLower(strings.TrimSpace(asset.Name))
 		if name == "" || asset.BrowserDownloadURL == "" {
@@ -108,17 +122,32 @@ func chooseLauncherAssetURL(release githubRelease, goos, goarch string) string {
 				return asset.BrowserDownloadURL
 			}
 		case "linux":
-			if goarch == "amd64" && strings.HasSuffix(name, ".deb") {
+			archToken := "linux-" + strings.ToLower(goarch)
+			if strings.HasSuffix(name, ".deb") && strings.Contains(name, archToken) {
 				return asset.BrowserDownloadURL
 			}
-			if strings.HasSuffix(name, ".appimage") {
+			if strings.HasSuffix(name, ".appimage") && strings.Contains(name, archToken) {
 				return asset.BrowserDownloadURL
 			}
-			if strings.Contains(name, "linux-amd64.tar.gz") {
+			if strings.Contains(name, archToken+".tar.gz") {
 				return asset.BrowserDownloadURL
 			}
 		}
 	}
+
+	// Last-resort Linux fallback if exact arch artifact is missing.
+	if goos == "linux" {
+		if url := findAsset(func(name string) bool { return strings.HasSuffix(name, ".deb") }); url != "" {
+			return url
+		}
+		if url := findAsset(func(name string) bool { return strings.HasSuffix(name, ".appimage") }); url != "" {
+			return url
+		}
+		if url := findAsset(func(name string) bool { return strings.Contains(name, "linux-") && strings.HasSuffix(name, ".tar.gz") }); url != "" {
+			return url
+		}
+	}
+
 	return ""
 }
 

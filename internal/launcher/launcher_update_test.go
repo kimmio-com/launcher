@@ -34,6 +34,7 @@ func TestChooseLauncherAssetURL(t *testing.T) {
 			{Name: "Kimmio-Launcher-1.2.0-macos-arm64.dmg", BrowserDownloadURL: "https://example/macos-arm64.dmg"},
 			{Name: "Kimmio-Launcher-1.2.0-macos-amd64.dmg", BrowserDownloadURL: "https://example/macos-amd64.dmg"},
 			{Name: "Kimmio-Launcher-1.2.0-linux-amd64.deb", BrowserDownloadURL: "https://example/linux.deb"},
+			{Name: "Kimmio-Launcher-1.2.0-linux-arm64.deb", BrowserDownloadURL: "https://example/linux-arm64.deb"},
 		},
 	}
 
@@ -48,5 +49,8 @@ func TestChooseLauncherAssetURL(t *testing.T) {
 	}
 	if got := chooseLauncherAssetURL(release, "linux", "amd64"); got != "https://example/linux.deb" {
 		t.Fatalf("linux asset mismatch: %s", got)
+	}
+	if got := chooseLauncherAssetURL(release, "linux", "arm64"); got != "https://example/linux-arm64.deb" {
+		t.Fatalf("linux arm64 asset mismatch: %s", got)
 	}
 }
