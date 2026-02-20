@@ -512,6 +512,7 @@
 <script>
     let pendingVersion = null;
     let knownVersions = ["latest", "1.0.1", "1.0.0"];
+    const activeJobs = new Map();
 
     function withCsrfRequest(init) {
         const apply = window.withCsrf || ((payload) => payload || {});
@@ -545,6 +546,30 @@
         }
         line.textContent = text;
         line.style.color = isError ? "#ff7f96" : "#d2d2d5";
+    }
+
+    function setRowProgress(id, progress, visible) {
+        const wrap = document.querySelector(`[data-progress="${id}"]`);
+        const bar = document.querySelector(`[data-progress-bar="${id}"]`);
+        if (!wrap || !bar) return;
+        const clamped = Math.max(0, Math.min(100, Number(progress || 0)));
+        bar.style.width = `${clamped}%`;
+        wrap.classList.toggle("is-hidden", !visible);
+    }
+
+    function setRowLiveLogs(id, logs, visible) {
+        const box = document.querySelector(`[data-live-logs="${id}"]`);
+        if (!box) return;
+        const lines = Array.isArray(logs) ? logs.slice(-8) : [];
+        box.textContent = lines.join("\n");
+        box.classList.toggle("is-hidden", !visible || lines.length === 0);
+    }
+
+    function setCancelVisible(id, visible) {
+        const btn = document.querySelector(`[data-cancel-btn="${id}"]`);
+        if (!btn) return;
+        btn.classList.toggle("is-hidden", !visible);
+        btn.disabled = false;
     }
 
     function openVersionModal(id, currentVersion, btn) {
@@ -686,6 +711,14 @@
                 );
             });
         }
+
+        // Resume already running jobs after page refresh.
+        document.querySelectorAll(".profile-card[data-profile-id]").forEach((row) => {
+            const id = row.getAttribute("data-profile-id");
+            const activeJobId = (row.getAttribute("data-active-job-id") || "").trim();
+            if (!id || !activeJobId) return;
+            resumeRunningJob(id, activeJobId);
+        });
     });
 
     function setRowBusy(id, busy) {
@@ -693,6 +726,9 @@
         if (!row) return;
         row.classList.toggle("is-busy", busy);
         row.querySelectorAll("button").forEach((btn) => {
+            if (btn.matches(".cancel-task-btn")) {
+                return;
+            }
             btn.disabled = busy;
         });
     }
@@ -724,15 +760,22 @@
             }
             const payload = await res.json();
             const job = payload.job || {};
+            activeJobs.set(id, jobId);
             if (btn) {
                 setButtonLoading(btn, job.message || "Processing", true);
             }
+            setRowProgress(id, job.progress, true);
+            setRowLiveLogs(id, job.logs, true);
+            setCancelVisible(id, job.status === "queued" || job.status === "running");
             if (job.message) {
                 const stepPrefix = job.step ? `[${job.step}] ` : "";
                 const progressSuffix = typeof job.progress === "number" ? ` (${job.progress}%)` : "";
                 setRowFeedback(id, `${stepPrefix}${job.message}${progressSuffix}`);
             }
             if (job.status === "succeeded") {
+                return job;
+            }
+            if (job.status === "canceled") {
                 return job;
             }
             if (job.status === "failed" || job.status === "timeout" || job.status === "rolled_back") {
@@ -757,16 +800,72 @@
             if (!jobId) {
                 throw new Error("Missing job id");
             }
+            activeJobs.set(id, jobId);
+            setCancelVisible(id, true);
             const job = await pollJob(id, jobId, btn);
-            setRowFeedback(id, job.message || "Completed");
-            window.location.reload();
+            setRowFeedback(id, job.message || "Completed", job.status === "canceled");
+            if (job.status !== "canceled") {
+                window.location.reload();
+            }
         } catch (err) {
             const msg = err?.message || "Action failed";
             setRowFeedback(id, msg, true);
             showToast(msg);
         } finally {
+            activeJobs.delete(id);
             setButtonLoading(btn, loadingLabel, false);
+            setCancelVisible(id, false);
             setRowBusy(id, false);
+            setRowProgress(id, 0, false);
+        }
+    }
+
+    async function resumeRunningJob(id, jobId) {
+        activeJobs.set(id, jobId);
+        setRowBusy(id, true);
+        setCancelVisible(id, true);
+        try {
+            const job = await pollJob(id, jobId, null);
+            setRowFeedback(id, job.message || "Completed", job.status === "canceled");
+            if (job.status !== "canceled") {
+                window.location.reload();
+            }
+        } catch (err) {
+            const msg = err?.message || "Action failed";
+            setRowFeedback(id, msg, true);
+        } finally {
+            activeJobs.delete(id);
+            setCancelVisible(id, false);
+            setRowBusy(id, false);
+            setRowProgress(id, 0, false);
+        }
+    }
+
+    async function cancelProfileJob(id, btn) {
+        const jobId = activeJobs.get(id);
+        if (!jobId) {
+            setRowFeedback(id, "No active job to cancel", true);
+            return;
+        }
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Canceling...</span>';
+        }
+        try {
+            const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/cancel`, withCsrfRequest({method: "POST"}));
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || "Cancel request failed");
+            }
+            setRowFeedback(id, "Cancellation requested");
+        } catch (err) {
+            const msg = err?.message || "Cancel failed";
+            setRowFeedback(id, msg, true);
+            showToast(msg);
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-ban"></i><span>Cancel task</span>';
+            }
         }
     }
 

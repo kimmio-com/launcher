@@ -153,7 +153,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-linux-installer
-          path: dist/Kimmio-Launcher-${{ needs.prepare.outputs.app_version }}-linux-amd64.deb
+          path: |
+            dist/Kimmio-Launcher-${{ needs.prepare.outputs.app_version }}-linux-amd64.deb
+            dist/Kimmio-Launcher-${{ needs.prepare.outputs.app_version }}-linux-arm64.deb
           if-no-files-found: error
 
   publish:
@@ -233,18 +235,22 @@ jobs:
                       "path": installer_name
                   })
 
-          linux_installer_name = "Kimmio-Launcher-${{ needs.prepare.outputs.app_version }}-linux-amd64.deb"
-          linux_installer_path = f"dist/{linux_installer_name}"
-          if os.path.exists(linux_installer_path):
-              artifacts = data.setdefault("artifacts", [])
-              if not any(a.get("path") == linux_installer_name for a in artifacts):
-                  artifacts.append({
-                      "platform": "linux/amd64",
-                      "type": "installer",
-                      "name": linux_installer_name,
-                      "path": linux_installer_name,
-                      "recommended": True
-                  })
+          linux_installers = [
+              ("linux/amd64", "Kimmio-Launcher-${{ needs.prepare.outputs.app_version }}-linux-amd64.deb"),
+              ("linux/arm64", "Kimmio-Launcher-${{ needs.prepare.outputs.app_version }}-linux-arm64.deb"),
+          ]
+          artifacts = data.setdefault("artifacts", [])
+          for platform, linux_installer_name in linux_installers:
+              linux_installer_path = f"dist/{linux_installer_name}"
+              if os.path.exists(linux_installer_path):
+                  if not any(a.get("path") == linux_installer_name for a in artifacts):
+                      artifacts.append({
+                          "platform": platform,
+                          "type": "installer",
+                          "name": linux_installer_name,
+                          "path": linux_installer_name,
+                          "recommended": True
+                      })
               data["generatedAt"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
           with open(manifest_path, "w", encoding="utf-8") as f:

@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -25,6 +26,7 @@ type Server struct {
 	jobMu          sync.Mutex
 	jobs           map[string]*ActionJob
 	activeProfiles map[string]string
+	jobCancels     map[string]context.CancelFunc
 }
 
 var appCfg = config.Load("dev")
@@ -47,6 +49,7 @@ func NewServer(cfg config.Config) *Server {
 		dbPath:         filepath.Join(cfg.DataDir, "profiles.json"),
 		jobs:           map[string]*ActionJob{},
 		activeProfiles: map[string]string{},
+		jobCancels:     map[string]context.CancelFunc{},
 	}
 }
 
@@ -80,7 +83,7 @@ func Run(embedded fs.FS, cfg config.Config) error {
 		store.Profiles = applyHealthStatus(store.Profiles)
 		if err := ts.RenderPageWithTemplate(w, "profiles.html", map[string]any{
 			"DockerRunning": IsDockerRunning(),
-			"Profiles":      store.Profiles,
+			"Profiles":      srv.attachActiveJobs(store.Profiles),
 			"ProfileCount":  len(store.Profiles),
 			"MaxProfiles":   appCfg.MaxProfiles,
 			"CSRFToken":     csrfToken,
@@ -119,7 +122,7 @@ func Run(embedded fs.FS, cfg config.Config) error {
 
 	mux.HandleFunc("/api/profiles", withMutationGuard(srv.handleCreateProfile))
 	mux.HandleFunc("/api/profiles/", withMutationGuard(srv.handleProfileAction))
-	mux.HandleFunc("/api/jobs/", srv.handleJobStatus)
+	mux.HandleFunc("/api/jobs/", withMutationGuard(srv.handleJobRoute))
 	mux.HandleFunc("/api/kimmio/versions", srv.handleKimmioVersions)
 	mux.HandleFunc("/api/launcher/update", srv.handleLauncherUpdate)
 	mux.HandleFunc("/api/server/stop", withMutationGuard(handleServerStop))
@@ -334,6 +337,17 @@ func applyHealthStatus(profiles []ProfileRequest) []ProfileRequest {
 		}
 	}
 	return updated
+}
+
+func (s *Server) attachActiveJobs(profiles []ProfileRequest) []ProfileRequest {
+	s.jobMu.Lock()
+	defer s.jobMu.Unlock()
+	out := make([]ProfileRequest, len(profiles))
+	copy(out, profiles)
+	for i := range out {
+		out[i].ActiveJobID = s.activeProfiles[out[i].ID]
+	}
+	return out
 }
 
 func isWithinStartingWindow(v string) bool {

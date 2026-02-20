@@ -14,14 +14,14 @@ import (
 
 type composeProgressFn func(step, message string, progress int)
 
-func (s *Server) performEnable(id, jobID string) error {
+func (s *Server) performEnable(id, jobID string, parent context.Context) error {
 	firstInstall := isFirstProfileInstall(id)
 	actionTimeout := appCfg.EnableTimeout
 	if actionTimeout < appCfg.ActionTimeout {
 		actionTimeout = appCfg.ActionTimeout
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), actionTimeout)
+	ctx, cancel := context.WithTimeout(parent, actionTimeout)
 	defer cancel()
 
 	store, idx, err := s.getProfileForAction(id)
@@ -63,7 +63,10 @@ func (s *Server) performEnable(id, jobID string) error {
 		return err
 	}
 	s.updateJobStep(jobID, "health", "running", "Waiting for health", 85, "")
-	if ok := waitForProfileHealth(profile, 6, 2*time.Second); !ok {
+	if ok := waitForProfileHealthOrCanceled(ctx, profile, 6, 2*time.Second); !ok {
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return ctx.Err()
+		}
 		logWarn("profile_enable_health_pending", map[string]any{"profile_id": id})
 		_ = s.markProfileResult(id, "enable", "warning", "Instance did not become healthy yet", startingUntil)
 		return nil
@@ -72,8 +75,8 @@ func (s *Server) performEnable(id, jobID string) error {
 	return s.markProfileResult(id, "enable", "success", "Instance is healthy", "")
 }
 
-func (s *Server) performStop(id, jobID string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), appCfg.ActionTimeout)
+func (s *Server) performStop(id, jobID string, parent context.Context) error {
+	ctx, cancel := context.WithTimeout(parent, appCfg.ActionTimeout)
 	defer cancel()
 
 	s.updateJobStep(jobID, "down", "running", "Stopping compose stack", 35, "")
@@ -84,8 +87,8 @@ func (s *Server) performStop(id, jobID string) error {
 	return s.markProfileResult(id, "stop", "success", "Profile stopped", "")
 }
 
-func (s *Server) performRecreate(id, jobID string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), appCfg.ActionTimeout)
+func (s *Server) performRecreate(id, jobID string, parent context.Context) error {
+	ctx, cancel := context.WithTimeout(parent, appCfg.ActionTimeout)
 	defer cancel()
 
 	store, idx, err := s.getProfileForAction(id)
@@ -110,15 +113,18 @@ func (s *Server) performRecreate(id, jobID string) error {
 	if err := s.markProfileResult(id, "recreate", "success", "Recreate requested; waiting for health", startingUntil); err != nil {
 		return err
 	}
-	if ok := waitForProfileHealth(profile, 6, 2*time.Second); !ok {
+	if ok := waitForProfileHealthOrCanceled(ctx, profile, 6, 2*time.Second); !ok {
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return ctx.Err()
+		}
 		_ = s.markProfileResult(id, "recreate", "warning", "Instance did not become healthy yet", startingUntil)
 		return nil
 	}
 	return s.markProfileResult(id, "recreate", "success", "Instance is healthy", "")
 }
 
-func (s *Server) performDelete(id, jobID string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), appCfg.ActionTimeout)
+func (s *Server) performDelete(id, jobID string, parent context.Context) error {
+	ctx, cancel := context.WithTimeout(parent, appCfg.ActionTimeout)
 	defer cancel()
 
 	s.mu.Lock()
@@ -162,8 +168,8 @@ func (s *Server) performDelete(id, jobID string) error {
 	return nil
 }
 
-func (s *Server) performVersionUpdate(id, newVersion, jobID string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), appCfg.ActionTimeout)
+func (s *Server) performVersionUpdate(id, newVersion, jobID string, parent context.Context) error {
+	ctx, cancel := context.WithTimeout(parent, appCfg.ActionTimeout)
 	defer cancel()
 
 	s.mu.Lock()
@@ -206,8 +212,8 @@ func (s *Server) performVersionUpdate(id, newVersion, jobID string) error {
 	return s.markProfileResult(id, "version", "success", "Version updated to "+newVersion, "")
 }
 
-func (s *Server) performRegenerateSecrets(id, jobID string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), appCfg.ActionTimeout)
+func (s *Server) performRegenerateSecrets(id, jobID string, parent context.Context) error {
+	ctx, cancel := context.WithTimeout(parent, appCfg.ActionTimeout)
 	defer cancel()
 
 	store, idx, err := s.getProfileForAction(id)
@@ -313,6 +319,22 @@ func runProfileComposeUp(ctx context.Context, profile ProfileRequest, onProgress
 		return fmt.Errorf("%s", friendlyDockerError(lastErr.Error()))
 	}
 	return fmt.Errorf("failed to start compose stack")
+}
+
+func waitForProfileHealthOrCanceled(ctx context.Context, profile ProfileRequest, attempts int, sleep time.Duration) bool {
+	for i := 0; i < attempts; i++ {
+		if isProfileHealthy(profile) {
+			return true
+		}
+		if i < attempts-1 {
+			select {
+			case <-ctx.Done():
+				return false
+			case <-time.After(sleep):
+			}
+		}
+	}
+	return false
 }
 
 func runProfileComposeDown(ctx context.Context, id string, removeVolumes bool) error {

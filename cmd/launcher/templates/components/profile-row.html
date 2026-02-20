@@ -1,5 +1,5 @@
 {{ define "profile-row" }}
-<div class="profile-card" data-profile-id="{{ .ID }}">
+<div class="profile-card" data-profile-id="{{ .ID }}" data-active-job-id="{{ .ActiveJobID }}">
     <div class="card-glow"></div>
 
     <div class="card-content">
@@ -93,6 +93,14 @@
         </div>
 
         <div class="row-feedback" data-feedback="{{ .ID }}">
+            <div class="job-progress is-hidden" data-progress="{{ .ID }}">
+                <div class="job-progress-bar" data-progress-bar="{{ .ID }}" style="width: 0%"></div>
+            </div>
+            <div class="job-live-logs is-hidden" data-live-logs="{{ .ID }}"></div>
+            <button type="button" class="cancel-task-btn is-hidden" data-cancel-btn="{{ .ID }}" onclick="cancelProfileJob('{{ .ID }}', this)">
+                <i class="fa-solid fa-ban"></i>
+                <span>Cancel task</span>
+            </button>
             {{ if .Enabled }}
             <a class="profile-local-url" href="http://localhost:{{ range .Ports }}{{ .Host }}{{ end }}" target="_blank" rel="noopener noreferrer">
                 <i class="fa-solid fa-link"></i>
@@ -339,6 +347,7 @@
         font-weight: 700;
         white-space: nowrap;
         overflow: hidden;
+        scrollbar-color: darkgray transparent;
         text-overflow: ellipsis;
     }
 
@@ -450,7 +459,6 @@
         background: linear-gradient(180deg, rgba(45, 215, 152, 0.25), rgba(45, 215, 152, 0.11));
         color: #eafff5;
         box-shadow: 0 0 0 1px rgba(45, 215, 152, 0.25), 0 10px 24px -14px rgba(45, 215, 152, 0.9);
-        animation: enablePulse 1.8s ease-in-out infinite;
     }
 
     .action-enable:hover {
@@ -461,14 +469,7 @@
         box-shadow: 0 0 0 1px rgba(45, 215, 152, 0.38), 0 14px 26px -14px rgba(45, 215, 152, 1);
     }
 
-    @keyframes enablePulse {
-        0%, 100% {
-            box-shadow: 0 0 0 1px rgba(45, 215, 152, 0.2), 0 10px 24px -14px rgba(45, 215, 152, 0.75);
-        }
-        50% {
-            box-shadow: 0 0 0 1px rgba(45, 215, 152, 0.45), 0 14px 30px -14px rgba(45, 215, 152, 1);
-        }
-    }
+
 
     .action-stop:hover {
         color: #f5b94a;
@@ -509,6 +510,71 @@
         display: flex;
         flex-direction: column;
         gap: 3px;
+    }
+
+    .job-progress {
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+        margin-bottom: 6px;
+    }
+
+    .job-progress.is-hidden {
+        display: none;
+    }
+
+    .job-progress-bar {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #2dd798, #6be8bc);
+        transition: width 0.35s ease;
+    }
+
+    .job-live-logs {
+        margin-bottom: 6px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(0, 0, 0, 0.22);
+        max-height: 130px;
+        overflow: auto;
+        font-size: 11px;
+        line-height: 1.35;
+        color: #aeb5c2;
+        font-family: var(--mono);
+        white-space: pre-wrap;
+    }
+
+    .job-live-logs.is-hidden {
+        display: none;
+    }
+
+    .cancel-task-btn {
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 0 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 140, 107, 0.55);
+        background: rgba(255, 140, 107, 0.12);
+        color: #ffd8cd;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.25px;
+        cursor: pointer;
+    }
+
+    .cancel-task-btn:hover {
+        border-color: rgba(255, 140, 107, 0.85);
+        background: rgba(255, 140, 107, 0.2);
+        color: #fff0ec;
+    }
+
+    .cancel-task-btn.is-hidden {
+        display: none;
     }
 
     .profile-local-url {
