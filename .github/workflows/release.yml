@@ -4,13 +4,53 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (example: v1.2.3). If empty, a tag is generated."
+        required: false
+        type: string
 
 permissions:
   contents: write
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.meta.outputs.tag_name }}
+      app_version: ${{ steps.meta.outputs.app_version }}
+      short_sha: ${{ steps.meta.outputs.short_sha }}
+
+    steps:
+      - name: Compute release metadata
+        id: meta
+        shell: bash
+        run: |
+          short_sha="${GITHUB_SHA::7}"
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            tag_name="${GITHUB_REF_NAME}"
+          else
+            input_tag="${{ github.event.inputs.tag }}"
+            if [[ -n "${input_tag}" ]]; then
+              tag_name="${input_tag}"
+            else
+              tag_name="v0.0.0-${short_sha}"
+            fi
+          fi
+
+          if [[ "${tag_name}" != v* ]]; then
+            tag_name="v${tag_name}"
+          fi
+
+          app_version="${tag_name#v}"
+          echo "tag_name=${tag_name}" >> "$GITHUB_OUTPUT"
+          echo "app_version=${app_version}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
+
   release-macos-dist:
     runs-on: macos-latest
+    needs: [prepare]
 
     steps:
       - name: Checkout
@@ -35,8 +75,8 @@ jobs:
 
       - name: Build release artifacts
         run: |
-          short_sha="${GITHUB_SHA::7}"
-          app_version="${GITHUB_REF_NAME#v}"
+          short_sha="${{ needs.prepare.outputs.short_sha }}"
+          app_version="${{ needs.prepare.outputs.app_version }}"
           VERSION="${app_version}" GIT_COMMIT="${short_sha}" ./build.sh
 
       - name: Upload dist artifact bundle
@@ -48,6 +88,7 @@ jobs:
 
   release-windows-installer:
     runs-on: windows-latest
+    needs: [prepare]
 
     steps:
       - name: Checkout
@@ -62,8 +103,8 @@ jobs:
       - name: Build Windows app package
         shell: bash
         run: |
-          short_sha="${GITHUB_SHA::7}"
-          app_version="${GITHUB_REF_NAME#v}"
+          short_sha="${{ needs.prepare.outputs.short_sha }}"
+          app_version="${{ needs.prepare.outputs.app_version }}"
           echo "APP_VERSION=${app_version}" >> "$GITHUB_ENV"
           echo "APP_COMMIT=${short_sha}" >> "$GITHUB_ENV"
           chmod +x scripts/build-windows-app.sh
@@ -89,9 +130,37 @@ jobs:
 
   publish:
     runs-on: ubuntu-latest
-    needs: [release-macos-dist, release-windows-installer]
+    needs: [prepare, release-macos-dist, release-windows-installer]
 
     steps:
+      - name: Ensure tag exists for manual runs
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const tag = '${{ needs.prepare.outputs.tag_name }}';
+            const sha = context.sha;
+
+            try {
+              await github.rest.git.getRef({
+                owner,
+                repo,
+                ref: `tags/${tag}`,
+              });
+              core.info(`Tag ${tag} already exists`);
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.git.createRef({
+                owner,
+                repo,
+                ref: `refs/tags/${tag}`,
+                sha,
+              });
+              core.info(`Created tag ${tag} at ${sha}`);
+            }
+
       - name: Download dist artifact
         uses: actions/download-artifact@v4
         with:
@@ -148,6 +217,8 @@ jobs:
       - name: Create GitHub release and upload assets
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.prepare.outputs.tag_name }}
+          target_commitish: ${{ github.sha }}
           generate_release_notes: true
           files: |
             dist/**/*.zip
