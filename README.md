@@ -1,4 +1,4 @@
-# Kimmio Launcher (`luncher`)
+# Kimmio Launcher
 
 Kimmio Launcher is a Go web application used to create and manage Docker-based Kimmio instances (called profiles).
 
