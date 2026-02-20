@@ -128,9 +128,37 @@ jobs:
           path: dist/Kimmio-Launcher-Setup-windows-amd64.exe
           if-no-files-found: error
 
+  release-linux-installer:
+    runs-on: ubuntu-latest
+    needs: [prepare]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build Linux package
+        run: |
+          short_sha="${{ needs.prepare.outputs.short_sha }}"
+          app_version="${{ needs.prepare.outputs.app_version }}"
+          chmod +x scripts/build-linux-app.sh
+          VERSION="${app_version}" GIT_COMMIT="${short_sha}" scripts/build-linux-app.sh
+
+      - name: Upload linux installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-installer
+          path: dist/Kimmio-Launcher-${{ needs.prepare.outputs.app_version }}-linux-amd64.deb
+          if-no-files-found: error
+
   publish:
     runs-on: ubuntu-latest
-    needs: [prepare, release-macos-dist, release-windows-installer]
+    needs: [prepare, release-macos-dist, release-windows-installer, release-linux-installer]
 
     steps:
       - name: Ensure tag exists for manual runs
@@ -173,6 +201,12 @@ jobs:
           name: release-windows-setup
           path: dist
 
+      - name: Download linux installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-linux-installer
+          path: dist
+
       - name: Merge installer into map.json
         run: |
           python3 - <<'PY'
@@ -197,6 +231,19 @@ jobs:
                       "type": "installer",
                       "name": installer_name,
                       "path": installer_name
+                  })
+
+          linux_installer_name = "Kimmio-Launcher-${{ needs.prepare.outputs.app_version }}-linux-amd64.deb"
+          linux_installer_path = f"dist/{linux_installer_name}"
+          if os.path.exists(linux_installer_path):
+              artifacts = data.setdefault("artifacts", [])
+              if not any(a.get("path") == linux_installer_name for a in artifacts):
+                  artifacts.append({
+                      "platform": "linux/amd64",
+                      "type": "installer",
+                      "name": linux_installer_name,
+                      "path": linux_installer_name,
+                      "recommended": True
                   })
               data["generatedAt"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 

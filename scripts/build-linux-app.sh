@@ -59,6 +59,7 @@ BIN_PATH="$APPDIR/usr/bin/$BIN_NAME"
 DESKTOP_FILE="$APPDIR/${BIN_NAME}.desktop"
 APPIMAGE_PATH="$ROOT_DIR/$OUT_DIR/${SAFE_NAME}-${VERSION}-linux-amd64.AppImage"
 TAR_PATH="$ROOT_DIR/$OUT_DIR/${SAFE_NAME}-${VERSION}-linux-amd64.tar.gz"
+DEB_PATH="$ROOT_DIR/$OUT_DIR/${SAFE_NAME}-${VERSION}-linux-amd64.deb"
 
 rm -rf "$APPDIR"
 mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/512x512/apps"
@@ -115,6 +116,48 @@ else
     tar -czf "$TAR_PATH" "$(basename "$APPDIR")"
   )
   echo "Archive: $TAR_PATH"
+fi
+
+if command -v dpkg-deb >/dev/null 2>&1; then
+  echo "Creating .deb installer..."
+  DEB_ROOT="$ROOT_DIR/$OUT_DIR/linux/deb-root"
+  rm -rf "$DEB_ROOT"
+  mkdir -p "$DEB_ROOT/DEBIAN" "$DEB_ROOT/opt/kimmio-launcher" "$DEB_ROOT/usr/share/applications" "$DEB_ROOT/usr/share/icons/hicolor/512x512/apps" "$DEB_ROOT/usr/bin"
+
+  cp "$BIN_PATH" "$DEB_ROOT/opt/kimmio-launcher/kimmio-launcher"
+  chmod 0755 "$DEB_ROOT/opt/kimmio-launcher/kimmio-launcher"
+
+  cat > "$DEB_ROOT/usr/share/applications/kimmio-launcher.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$APP_NAME
+Exec=/opt/kimmio-launcher/kimmio-launcher
+Icon=kimmio-launcher
+Terminal=false
+Categories=Utility;
+EOF
+
+  if [[ -n "$ICON_PNG" && -f "$ICON_PNG" ]]; then
+    cp "$ICON_PNG" "$DEB_ROOT/usr/share/icons/hicolor/512x512/apps/kimmio-launcher.png"
+  fi
+
+  ln -sf /opt/kimmio-launcher/kimmio-launcher "$DEB_ROOT/usr/bin/kimmio-launcher"
+
+  cat > "$DEB_ROOT/DEBIAN/control" <<EOF
+Package: kimmio-launcher
+Version: $VERSION
+Section: utils
+Priority: optional
+Architecture: amd64
+Maintainer: Kimmio <support@kimmio.app>
+Description: Kimmio Launcher desktop app
+ Launcher for managing local Docker-based Kimmio profiles.
+EOF
+
+  dpkg-deb --build "$DEB_ROOT" "$DEB_PATH" >/dev/null
+  echo "Debian package: $DEB_PATH"
+else
+  echo "dpkg-deb not found; skipping .deb package."
 fi
 
 echo "Done: $APPDIR"
