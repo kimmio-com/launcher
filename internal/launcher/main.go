@@ -129,7 +129,7 @@ func Run(embedded fs.FS, cfg config.Config) error {
 	printStartupBanner(launcherURL)
 
 	if cfg.BuildMode == "prod" {
-		openBrowser(port)
+		go openBrowserWhenReachable(port, 12*time.Second)
 	}
 	logInfo("server_start", map[string]any{
 		"port":           port,
@@ -145,6 +145,13 @@ func Run(embedded fs.FS, cfg config.Config) error {
 }
 
 func printStartupBanner(url string) {
+	if runtime.GOOS == "windows" || strings.TrimSpace(os.Getenv("NO_COLOR")) != "" {
+		fmt.Println("Kimmio Launcher")
+		fmt.Println("Welcome to Kimmio Launcher")
+		fmt.Printf("To visit it go to URL: %s\n", url)
+		return
+	}
+
 	const (
 		reset      = "\033[0m"
 		bold       = "\033[1m"
@@ -156,6 +163,20 @@ func printStartupBanner(url string) {
 	fmt.Printf("%s%sKimmio Launcher%s\n", bold, cyan, reset)
 	fmt.Printf("%sWelcome to Kimmio Launcher%s\n", green, reset)
 	fmt.Printf("%sTo visit it go to URL:%s %s%s%s\n", brightGray, reset, bold, url, reset)
+}
+
+func openBrowserWhenReachable(port int, maxWait time.Duration) {
+	deadline := time.Now().Add(maxWait)
+	for time.Now().Before(deadline) {
+		if conn, err := net.DialTimeout("tcp", "127.0.0.1:"+strconv.Itoa(port), 300*time.Millisecond); err == nil {
+			_ = conn.Close()
+			openBrowser(port)
+			return
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	// Fallback attempt even if readiness probe timed out.
+	openBrowser(port)
 }
 
 func handleServerStop(w http.ResponseWriter, r *http.Request) {

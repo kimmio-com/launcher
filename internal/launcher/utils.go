@@ -89,6 +89,7 @@ func openBrowser(port int) {
 	case "windows":
 		tries = []openTry{
 			// start requires empty title arg before URL.
+			{name: `C:\Windows\System32\cmd.exe`, args: []string{"/c", "start", "", url}},
 			{name: "cmd", args: []string{"/c", "start", "", url}},
 			{name: "powershell", args: []string{"-NoProfile", "-Command", "Start-Process", url}},
 			{name: "rundll32", args: []string{"url.dll,FileProtocolHandler", url}},

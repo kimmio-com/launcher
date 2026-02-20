@@ -62,7 +62,7 @@ mkdir -p "$ROOT_DIR/$PKG_DIR"
 echo "Building Windows binary..."
 (
   cd "$ROOT_DIR"
-  CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w -X main.appVersion=$VERSION -X main.gitCommit=$GIT_COMMIT" -o "$BIN_PATH" ./cmd/launcher
+  CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w -X main.buildMode=prod -X main.appVersion=$VERSION -X main.gitCommit=$GIT_COMMIT" -o "$BIN_PATH" ./cmd/launcher
 )
 
 if [[ -n "$ICON_ICO" ]]; then
