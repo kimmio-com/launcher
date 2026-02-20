@@ -149,6 +149,12 @@ jobs:
           chmod +x scripts/build-linux-app.sh
           VERSION="${app_version}" GIT_COMMIT="${short_sha}" scripts/build-linux-app.sh
 
+      - name: Verify linux installers exist
+        run: |
+          app_version="${{ needs.prepare.outputs.app_version }}"
+          test -f "dist/Kimmio-Launcher-${app_version}-linux-amd64.deb"
+          test -f "dist/Kimmio-Launcher-${app_version}-linux-arm64.deb"
+
       - name: Upload linux installer artifact
         uses: actions/upload-artifact@v4
         with:
