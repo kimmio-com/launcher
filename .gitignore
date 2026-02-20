@@ -1,0 +1,12 @@
+.idea/
+data/
+dist/
+
+# Local binaries
+luncher
+kimmo
+
+# OS files
+.DS_Store
+Thumbs.db
+/.idea/
