@@ -97,6 +97,53 @@ func TestCreateProfileStoresSecretsOutsideProfilesJSON(t *testing.T) {
 	}
 }
 
+func TestCreateProfileGeneratesSecretsWhenMissing(t *testing.T) {
+	tmp := t.TempDir()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldWD) }()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := config.Load("dev")
+	appCfg = cfg
+	srv := NewServer(cfg)
+	srv.dbPath = filepath.Join(tmp, "profiles.json")
+
+	ln, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatalf("failed to pick free port: %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+
+	req := ProfileRequest{
+		ID:      "kimmio-generated-secrets",
+		Version: "latest",
+		Ports:   []PortMapping{{Container: 3000, Host: port}},
+		Env: map[string]string{
+			"APP_DOMAIN": "localhost",
+		},
+	}
+
+	if err := srv.createProfile(req); err != nil {
+		t.Fatalf("createProfile failed: %v", err)
+	}
+
+	loadedSecrets := loadProfileSecrets(req.ID)
+	jwt := loadedSecrets["JWT_SECRET"]
+	enc := loadedSecrets["FLUMIO_ENC_KEY_V0"]
+	if len(jwt) < 32 {
+		t.Fatalf("expected generated JWT_SECRET length >= 32, got %d", len(jwt))
+	}
+	if len(enc) != 32 {
+		t.Fatalf("expected generated FLUMIO_ENC_KEY_V0 length 32, got %d", len(enc))
+	}
+}
+
 func TestParseVersionFromRequest_JSON(t *testing.T) {
 	body, _ := json.Marshal(map[string]string{"version": "1.0.1"})
 	r, err := http.NewRequest(http.MethodPost, "/api/profiles/x/version", bytes.NewReader(body))

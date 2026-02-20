@@ -8,7 +8,9 @@
                 <div class="text-group">
                     <span class="profile-id">{{ .ID }}</span>
                     <span class="profile-version">
-                        <i class="fa-solid fa-code-branch"></i> Release v{{ .Version }}
+                        <i class="fa-solid fa-code-branch"></i>
+                        <span class="version-label">Version</span>
+                        <span class="version-chip">v{{ .Version }}</span>
                     </span>
                 </div>
             </div>
@@ -24,14 +26,14 @@
                     <i class="fa-solid fa-memory"></i>
                     <div class="res-meta">
                         <span class="res-label">RAM</span>
-                        <span class="res-val">{{ .Resources.Limits.Memory }}</span>
+                        <span class="res-val">{{ if .Resources.Limits.Memory }}{{ .Resources.Limits.Memory }}{{ else }}Auto{{ end }}</span>
                     </div>
                 </div>
                 <div class="res-item" title="Processing Power">
                     <i class="fa-solid fa-microchip"></i>
                     <div class="res-meta">
                         <span class="res-label">CPU</span>
-                        <span class="res-val">{{ .Resources.Limits.CPUs }} Cores</span>
+                        <span class="res-val">{{ if gt .Resources.Limits.CPUs 0.0 }}{{ printf "%.1f" .Resources.Limits.CPUs }}{{ else }}1.0{{ end }} cores</span>
                     </div>
                 </div>
                 <div class="res-item" title="Network Access">
@@ -54,7 +56,7 @@
                 {{ else }}
                 <button class="util-btn action-enable js-profile-action" onclick="enableProfile('{{ .ID }}', this)">
                     <i class="fa-solid fa-play"></i>
-                    <span>Enable</span>
+                    <span>Enable now</span>
                 </button>
                 {{ end }}
                 {{ if .Enabled }}
@@ -91,6 +93,12 @@
         </div>
 
         <div class="row-feedback" data-feedback="{{ .ID }}">
+            {{ if .Enabled }}
+            <a class="profile-local-url" href="http://localhost:{{ range .Ports }}{{ .Host }}{{ end }}" target="_blank" rel="noopener noreferrer">
+                <i class="fa-solid fa-link"></i>
+                <span>http://localhost:{{ range .Ports }}{{ .Host }}{{ end }}</span>
+            </a>
+            {{ end }}
             {{ if .LastActionResult }}
             <div class="feedback-line">{{ .LastActionResult }}</div>
             {{ end }}
@@ -124,26 +132,20 @@
     /* Card Container */
     .profile-card {
         position: relative;
-        background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 20px;
-        padding: 24px;
+        background: linear-gradient(165deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.012) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 18px;
+        padding: 22px;
         margin-bottom: 16px;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        /*overflow: visible;*/
-
-        background: var(--card-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 24px;
-        padding: 40px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(20px);
+        transition: border-color 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease;
+        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28);
+        backdrop-filter: blur(14px);
     }
 
-
-
     .profile-card:hover {
-        box-shadow: 0 20px 40px -20px rgba(0, 255, 170, 0.02);
+        border-color: rgba(45, 215, 152, 0.35);
+        box-shadow: 0 18px 30px rgba(0, 0, 0, 0.36);
+        transform: translateY(-1px);
     }
 
     .card-glow {
@@ -173,76 +175,97 @@
     .card-header {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 24px;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
     }
 
     .identity-group {
-        padding-left: 1rem;
         display: flex;
-        gap: 16px;
+        gap: 10px;
         align-items: center;
-    }
-
-    .icon-box {
-        width: 48px;
-        height: 48px;
-        background: rgba(255, 255, 255, 0.04);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        color: var(--kimmio-emerald);
-        border: 1px solid rgba(0, 255, 170, 0.1);
     }
 
     .profile-id {
         display: block;
-        font-size: 20px;
-        font-weight: 700;
+        font-size: 28px;
+        font-weight: 800;
         color: #fff;
-        letter-spacing: -0.5px;
+        letter-spacing: -0.4px;
+        line-height: 1.05;
     }
 
     .profile-version {
+        margin-top: 2px;
         font-size: 12px;
-        color: #666;
+        color: #aeb5c2;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
+        font-weight: 700;
+    }
+
+    .profile-version i {
+        color: #7f8898;
+    }
+
+    .version-label {
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        font-size: 10px;
+        color: #8f97a6;
+    }
+
+    .version-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(109, 183, 255, 0.16);
+        border: 1px solid rgba(109, 183, 255, 0.38);
+        color: #d9ebff;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.3px;
     }
 
     /* Status Pills */
     .status-pill {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 6px 12px;
+        gap: 7px;
+        padding: 7px 11px;
         border-radius: 100px;
         font-size: 10px;
         font-weight: 800;
-        letter-spacing: 1px;
+        letter-spacing: 0.8px;
+        border: 1px solid transparent;
+        white-space: nowrap;
     }
 
     .status-pill.online {
-        background: rgba(0, 255, 170, 0.1);
-        color: var(--kimmio-emerald);
+        background: rgba(45, 215, 152, 0.14);
+        color: #3ce4a5;
+        border-color: rgba(45, 215, 152, 0.35);
     }
 
     .status-pill.idle {
         background: rgba(255, 255, 255, 0.05);
-        color: #888;
+        color: #9da2ab;
+        border-color: rgba(255, 255, 255, 0.12);
     }
 
     .status-pill.starting {
-        background: rgba(245, 185, 74, 0.12);
+        background: rgba(245, 185, 74, 0.13);
         color: #f5b94a;
+        border-color: rgba(245, 185, 74, 0.38);
     }
 
     .status-pill.unhealthy {
         background: rgba(255, 68, 102, 0.12);
         color: #ff4466;
+        border-color: rgba(255, 68, 102, 0.35);
     }
 
     .pulse-dot {
@@ -270,50 +293,61 @@
 
     /* Body Section */
     .resource-grid {
-        display: flex;
-        gap: 40px;
-        padding: 16px;
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 14px;
-        margin-bottom: 24px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        padding: 12px;
+        background: rgba(0, 0, 0, 0.22);
+        border-radius: 12px;
+        margin-bottom: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .res-item {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
+        padding: 9px 10px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.02);
+        min-width: 0;
     }
 
     .res-item i {
-        font-size: 16px;
-        color: #444;
+        font-size: 14px;
+        color: #5f6673;
+        flex-shrink: 0;
     }
 
     .res-meta {
         display: flex;
         flex-direction: column;
+        min-width: 0;
     }
 
     .res-label {
-        font-size: 9px;
+        font-size: 10px;
         font-weight: 800;
-        color: #555;
+        color: #737a86;
         text-transform: uppercase;
+        letter-spacing: 0.6px;
     }
 
     .res-val {
         font-size: 14px;
-        color: #bbb;
-        font-weight: 600;
+        color: #e3e6ee;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     /* Footer Section */
     .card-footer {
         display: flex;
         justify-content: flex-start;
-        padding-left: 0.5rem;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
         flex-wrap: wrap;
     }
 
@@ -377,16 +411,16 @@
 
     .util-btn,
     .launch-action-kimmio {
-        height: 40px;
+        height: 38px;
         padding: 0 14px;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
+        letter-spacing: 0.25px;
+        text-transform: none;
         border-radius: 10px;
         border: 1px solid rgba(255, 255, 255, 0.12);
         background: rgba(255, 255, 255, 0.03);
-        color: #b8b8b8;
+        color: #d2d4db;
         cursor: pointer;
         transition: 0.2s;
         display: inline-flex;
@@ -402,7 +436,7 @@
     .launch-action-kimmio {
         border-color: rgba(0, 255, 170, 0.35);
         color: #e9fffa;
-        background: linear-gradient(180deg, rgba(0, 255, 170, 0.11), rgba(0, 255, 170, 0.04));
+        background: linear-gradient(180deg, rgba(0, 255, 170, 0.15), rgba(0, 255, 170, 0.06));
     }
 
     .launch-action-kimmio:hover {
@@ -412,13 +446,28 @@
     }
 
     .action-enable {
-        border-color: rgba(45, 215, 152, 0.35);
+        border-color: rgba(45, 215, 152, 0.7);
+        background: linear-gradient(180deg, rgba(45, 215, 152, 0.25), rgba(45, 215, 152, 0.11));
+        color: #eafff5;
+        box-shadow: 0 0 0 1px rgba(45, 215, 152, 0.25), 0 10px 24px -14px rgba(45, 215, 152, 0.9);
+        animation: enablePulse 1.8s ease-in-out infinite;
     }
 
     .action-enable:hover {
-        color: #2dd798;
-        border-color: rgba(45, 215, 152, 0.65);
-        background: rgba(45, 215, 152, 0.08);
+        color: #ffffff;
+        border-color: rgba(45, 215, 152, 0.95);
+        background: linear-gradient(180deg, rgba(45, 215, 152, 0.36), rgba(45, 215, 152, 0.17));
+        transform: translateY(-1px);
+        box-shadow: 0 0 0 1px rgba(45, 215, 152, 0.38), 0 14px 26px -14px rgba(45, 215, 152, 1);
+    }
+
+    @keyframes enablePulse {
+        0%, 100% {
+            box-shadow: 0 0 0 1px rgba(45, 215, 152, 0.2), 0 10px 24px -14px rgba(45, 215, 152, 0.75);
+        }
+        50% {
+            box-shadow: 0 0 0 1px rgba(45, 215, 152, 0.45), 0 14px 30px -14px rgba(45, 215, 152, 1);
+        }
     }
 
     .action-stop:hover {
@@ -453,15 +502,41 @@
 
     .row-feedback {
         margin-top: 12px;
-        padding-left: 8px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 3px;
+    }
+
+    .profile-local-url {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #8fd2ff;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        width: fit-content;
+        max-width: 100%;
+    }
+
+    .profile-local-url span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .profile-local-url:hover {
+        color: #b9e6ff;
+        text-decoration: underline;
     }
 
     .feedback-line {
         font-size: 12px;
-        color: #d2d2d5;
+        color: #d8dbe2;
     }
 
     .feedback-log {
@@ -486,6 +561,12 @@
 
     .retry-link:hover {
         color: #9ed7ff;
+    }
+
+    @media (max-width: 900px) {
+        .resource-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
 </style>

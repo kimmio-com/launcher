@@ -112,8 +112,8 @@ func (s *Server) updateJob(jobID, status, message string, progress int, errText 
 	job.Error = errText
 	if message != "" {
 		job.Logs = append(job.Logs, now+" "+message)
-		if len(job.Logs) > 20 {
-			job.Logs = job.Logs[len(job.Logs)-20:]
+		if len(job.Logs) > 100 {
+			job.Logs = job.Logs[len(job.Logs)-100:]
 		}
 	}
 }
@@ -139,8 +139,8 @@ func (s *Server) updateJobStep(jobID, step, status, message string, progress int
 	job.Error = errText
 	if message != "" {
 		job.Logs = append(job.Logs, now+" ["+step+"] "+message)
-		if len(job.Logs) > 20 {
-			job.Logs = job.Logs[len(job.Logs)-20:]
+		if len(job.Logs) > 100 {
+			job.Logs = job.Logs[len(job.Logs)-100:]
 		}
 	}
 }

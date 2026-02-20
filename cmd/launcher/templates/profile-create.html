@@ -30,7 +30,7 @@
                 <span class="label-icon"><i class="fa-solid fa-fingerprint"></i></span>
                 <span class="label-text">Identity & Versioning</span>
             </div>
-            <div class="input-row">
+            <div class="input-row ">
                 <div class="field">
                     <label>Profile name <span class="req">*</span></label>
                     <input type="text"
@@ -46,9 +46,12 @@
                     <label>Version <span class="req">*</span></label>
                     <div class="select-custom">
                         <select name="version" style="width: 100%">
-                            <option value="latest" {{ if or (eq .Profile.Version "") (eq .Profile.Version "latest") }}selected{{ end }}>Latest</option>
-                            <option value="1.0.1" {{ if eq .Profile.Version "1.0.1" }}selected{{ end }}>1.0.1</option>
-                            <option value="1.0.0" {{ if eq .Profile.Version "1.0.0" }}selected{{ end }}>1.0.0</option>
+                            <option value="latest" {{ if or (eq .Profile.Version
+                            "") (eq .Profile.Version "latest") }}selected{{ end }}>Latest</option>
+                            <option value="1.0.1" {{ if eq .Profile.Version
+                            "1.0.1" }}selected{{ end }}>1.0.1</option>
+                            <option value="1.0.0" {{ if eq .Profile.Version
+                            "1.0.0" }}selected{{ end }}>1.0.0</option>
                         </select>
                     </div>
                 </div>
@@ -57,88 +60,103 @@
         </div>
 
 
-        <div class="vault-section">
-            <div class="section-label">
-                <span class="label-icon"><i class="fa-solid fa-network-wired"></i></span>
-                <span class="label-text">Network Bridge</span>
-            </div>
-            <div class="input-row">
-                <div class="field">
-                    <label>Host Port <span class="req">*</span></label>
-                    <input type="number" name="hostPort"
-                           value="{{ .HostPort }}"
-                           placeholder="8080" required>
-                </div>
+        <details class="advanced-panel">
+            <summary class="advanced-toggle">
+                <span><i class="fa-solid fa-sliders"></i> Advanced</span>
+                <i class="fa-solid fa-chevron-down"></i>
+            </summary>
 
-                <div class="field">
-                    <label>Domain (Optional)</label>
-                    <input type="text" name="domain"
-                           value="{{ index .Profile.Env "APP_DOMAIN" }}"
-                           placeholder="localhost">
-                </div>
-            </div>
-        </div>
+            <div class="advanced-content">
 
 
-        <div class="vault-section">
-            <div class="section-label">
-                <span class="label-icon"><i class="fa-solid fa-microchip"></i></span>
-                <span class="label-text">Resource Allocation (Optional)</span>
-            </div>
-            <div class="input-row">
-                <div class="field" style="width: 100%">
-                    <label>Memory Limit</label>
-                    <div class="select-custom">
-                        <select name="memory" style="width: 100%">
-                            <option value="" {{ if eq .Profile.Resources.Limits.Memory "" }}selected{{ end }}>Default (Auto)</option>
-                            <option value="512mb" {{ if eq .Profile.Resources.Limits.Memory "512mb" }}selected{{ end }}>512 MB</option>
-                            <option value="1gb" {{ if eq .Profile.Resources.Limits.Memory "1gb" }}selected{{ end }}>1.0 GB</option>
-                            <option value="2gb" {{ if eq .Profile.Resources.Limits.Memory "2gb" }}selected{{ end }}>2.0 GB</option>
-                            <option value="4gb" {{ if eq .Profile.Resources.Limits.Memory "4gb" }}selected{{ end }}>4.0 GB</option>
-                        </select>
+                <div class="vault-section">
+                    <div class="section-label">
+                        <span class="label-icon"><i class="fa-solid fa-network-wired"></i></span>
+                        <span class="label-text">Network Bridge</span>
+                    </div>
+                    <div class="input-row">
+                        <div class="field">
+                            <label>Host Port <span class="req">*</span></label>
+                            <input type="number" name="hostPort"
+                                   value="{{ .HostPort }}"
+                                   placeholder="8080" required>
+                        </div>
+
+                        <div class="field">
+                            <label>Domain (Optional)</label>
+                            <input type="text" name="domain"
+                                   value="{{ index .Profile.Env "APP_DOMAIN" }}"
+                            placeholder="localhost">
+                        </div>
                     </div>
                 </div>
 
-                <div class="field">
-                    <label>CPU Cores</label>
-                    <div class="input-with-suffix">
-                        <input type="number" name="cpus" step="0.5" placeholder="1.0" min="0.5"
-                               value="{{ if gt .Profile.Resources.Limits.CPUs 0.0 }}{{ printf "%.1f" .Profile.Resources.Limits.CPUs }}{{ else }}1.0{{ end }}">
-                        <span class="suffix">vCPU</span>
+                <div class="vault-section">
+                    <div class="section-label">
+                        <span class="label-icon"><i class="fa-solid fa-microchip"></i></span>
+                        <span class="label-text">Resource Allocation (Optional)</span>
                     </div>
-                </div>
-            </div>
-        </div>
+                    <div class="input-row">
+                        <div class="field" style="width: 100%">
+                            <label>Memory Limit</label>
+                            <div class="select-custom">
+                                <select name="memory" style="width: 100%">
+                                    <option value="" {{ if eq .Profile.Resources.Limits.Memory
+                                    "" }}selected{{ end }}>Default (Auto)</option>
+                                    <option value="512mb" {{ if eq .Profile.Resources.Limits.Memory
+                                    "512mb" }}selected{{ end }}>512 MB</option>
+                                    <option value="1gb" {{ if eq .Profile.Resources.Limits.Memory
+                                    "1gb" }}selected{{ end }}>1.0 GB</option>
+                                    <option value="2gb" {{ if eq .Profile.Resources.Limits.Memory
+                                    "2gb" }}selected{{ end }}>2.0 GB</option>
+                                    <option value="4gb" {{ if eq .Profile.Resources.Limits.Memory
+                                    "4gb" }}selected{{ end }}>4.0 GB</option>
+                                </select>
+                            </div>
+                        </div>
 
-        <div class="vault-section">
-            <div class="section-label">
-                <span class="label-icon"><i class="fa-solid fa-key"></i></span>
-                <span class="label-text">Security (Optional)</span>
-            </div>
-            <div class="input-row">
-                <div class="field">
-                    <label>JWT Secret</label>
-                    <div class="copy-field">
-                        <input type="text"
-                               name="jwtSecret"
-                               value="{{ index .Profile.Env "JWT_SECRET" }}"
-                               placeholder="Set app JWT secret">
-                        <button type="button" class="copy-btn" onclick="copyField(this)">Copy</button>
+                        <div class="field">
+                            <label>CPU Cores</label>
+                            <div class="input-with-suffix">
+                                <input type="number" name="cpus" step="0.5" placeholder="1.0" min="0.5"
+                                       value="{{ if gt .Profile.Resources.Limits.CPUs 0.0 }}{{ printf "%.1f" .Profile.Resources.Limits.CPUs }}{{ else }}1.0{{ end }}">
+                                <span class="suffix">vCPU</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="field">
-                    <label>FLUMIO_ENC_KEY_V0</label>
-                    <div class="copy-field">
-                        <input type="text"
-                               name="flumioEncKeyV0"
-                               value="{{ index .Profile.Env "FLUMIO_ENC_KEY_V0" }}"
-                               placeholder="Optional encryption key">
-                        <button type="button" class="copy-btn" onclick="copyField(this)">Copy</button>
+                <div class="vault-section">
+                    <div class="section-label">
+                        <span class="label-icon"><i class="fa-solid fa-key"></i></span>
+                        <span class="label-text">Security (Optional)</span>
+                    </div>
+                    <div class="input-row input-vertical">
+                        <div class="field">
+                            <label>JWT Secret</label>
+                            <div class="copy-field">
+                                <input type="text"
+                                       name="jwtSecret"
+                                       value="{{ index .Profile.Env "JWT_SECRET" }}"
+                                placeholder="Set app JWT secret">
+                                <button type="button" class="copy-btn" onclick="copyField(this)">Copy</button>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label>Encryption key</label>
+                            <div class="copy-field">
+                                <input type="text"
+                                       name="flumioEncKeyV0"
+                                       value="{{ index .Profile.Env "FLUMIO_ENC_KEY_V0" }}"
+                                placeholder="Optional encryption key">
+                                <button type="button" class="copy-btn" onclick="copyField(this)">Copy</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </details>
 
         <div class="vault-footer">
             <div class="submit-note">
@@ -157,6 +175,7 @@
 </div>
 
 <style>
+
     :root {
         --primary-glow: #2dd798;
         --bg-dark: #0a0a0c;
@@ -279,6 +298,13 @@
     .input-row {
         display: flex;
         gap: 24px;
+    }
+
+    .input-vertical
+    {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
     }
 
     .copy-field {
@@ -446,6 +472,53 @@
         margin-top: 10px;
         padding-top: 32px;
         border-top: 1px solid var(--border-color);
+    }
+
+    .advanced-panel {
+        margin-bottom: 24px;
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.02);
+        overflow: hidden;
+    }
+
+    .advanced-toggle {
+        list-style: none;
+        cursor: pointer;
+        padding: 14px 16px;
+        color: #d9d9df;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.45px;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        user-select: none;
+    }
+
+    .advanced-toggle::-webkit-details-marker {
+        display: none;
+    }
+
+    .advanced-toggle span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .advanced-toggle .fa-chevron-down {
+        transition: transform 0.2s ease;
+    }
+
+    .advanced-panel[open] .advanced-toggle .fa-chevron-down {
+        transform: rotate(180deg);
+    }
+
+    .advanced-content {
+        padding: 0 18px 2px;
+        border-top: 1px solid var(--border-color);
+        padding-top: 1.5rem;
     }
 
     .submit-note {

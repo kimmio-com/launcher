@@ -85,6 +85,12 @@ func (s *Server) createProfile(req ProfileRequest) error {
 	}
 
 	publicEnv, secretEnv := splitSecretEnv(req.Env)
+	if strings.TrimSpace(secretEnv["JWT_SECRET"]) == "" {
+		secretEnv["JWT_SECRET"] = randomToken(48)
+	}
+	if strings.TrimSpace(secretEnv["FLUMIO_ENC_KEY_V0"]) == "" {
+		secretEnv["FLUMIO_ENC_KEY_V0"] = randomToken(32)
+	}
 	req.Env = publicEnv
 	req.Enabled = false
 	req.Running = false

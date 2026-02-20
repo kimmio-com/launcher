@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -78,16 +79,42 @@ func liveReloadHandler(w http.ResponseWriter, r *http.Request) {
 
 func openBrowser(port int) {
 	url := fmt.Sprintf("http://localhost:%d", port)
-	var cmd *exec.Cmd
+	type openTry struct {
+		name string
+		args []string
+	}
+	var tries []openTry
 
 	switch runtime.GOOS {
 	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", url)
+		tries = []openTry{
+			// start requires empty title arg before URL.
+			{name: "cmd", args: []string{"/c", "start", "", url}},
+			{name: "powershell", args: []string{"-NoProfile", "-Command", "Start-Process", url}},
+			{name: "rundll32", args: []string{"url.dll,FileProtocolHandler", url}},
+		}
 	case "darwin":
-		cmd = exec.Command("open", url)
+		tries = []openTry{
+			{name: "open", args: []string{url}},
+		}
 	default:
-		cmd = exec.Command("xdg-open", url)
+		tries = []openTry{
+			{name: "xdg-open", args: []string{url}},
+		}
 	}
 
-	_ = cmd.Start()
+	var failures []string
+	for _, t := range tries {
+		cmd := exec.Command(t.name, t.args...)
+		if err := cmd.Start(); err == nil {
+			logInfo("browser_opened", map[string]any{"url": url, "method": t.name})
+			return
+		} else {
+			failures = append(failures, t.name+": "+err.Error())
+		}
+	}
+	logWarn("browser_open_failed", map[string]any{
+		"url":    url,
+		"errors": strings.Join(failures, " | "),
+	})
 }

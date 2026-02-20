@@ -8,10 +8,16 @@
                 <span class="brand-subtitle">Container profile control</span>
             </div>
         </div>
-        <button class="stop-launcher-btn" id="stopLauncherBtn" type="button" onclick="stopLauncherServer()">
-            <i class="fa-solid fa-power-off"></i>
-            <span>Stop Launcher</span>
-        </button>
+        <div class="brand-actions">
+            <a class="update-launcher-btn is-hidden" id="updateLauncherBtn" target="_blank" rel="noopener noreferrer">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                <span>Update Launcher</span>
+            </a>
+            <button class="stop-launcher-btn" id="stopLauncherBtn" type="button" onclick="stopLauncherServer()">
+                <i class="fa-solid fa-power-off"></i>
+                <span>Stop Launcher</span>
+            </button>
+        </div>
     </div>
 </header>
 
@@ -51,6 +57,12 @@
         align-items: center;
         gap: 10px;
         min-width: 0;
+    }
+
+    .brand-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }
 
     .brand-logo {
@@ -110,9 +122,57 @@
         opacity: 0.7;
         cursor: wait;
     }
+
+    .update-launcher-btn {
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 11px;
+        border-radius: 8px;
+        border: 1px solid rgba(45, 215, 152, 0.45);
+        background: linear-gradient(180deg, rgba(45, 215, 152, 0.18), rgba(45, 215, 152, 0.06));
+        color: #dfffee;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .update-launcher-btn:hover {
+        border-color: rgba(45, 215, 152, 0.75);
+        color: #ffffff;
+        background: linear-gradient(180deg, rgba(45, 215, 152, 0.3), rgba(45, 215, 152, 0.12));
+    }
+
+    .update-launcher-btn.is-hidden {
+        display: none;
+    }
 </style>
 
 <script>
+    async function initLauncherUpdateButton() {
+        const btn = document.getElementById("updateLauncherBtn");
+        if (!btn) return;
+        try {
+            const res = await fetch("/api/launcher/update");
+            if (!res.ok) return;
+            const payload = await res.json();
+            if (!payload || !payload.updateAvailable) return;
+            const href = payload.downloadURL || payload.releaseURL;
+            if (!href) return;
+            btn.href = href;
+            if (payload.latestVersion) {
+                btn.title = `Update to v${payload.latestVersion}`;
+            }
+            btn.classList.remove("is-hidden");
+        } catch (_) {
+            // ignore update check failures
+        }
+    }
+
     async function stopLauncherServer() {
         const withCsrf = window.withCsrf || ((init) => init || {});
         const btn = document.getElementById("stopLauncherBtn");
@@ -136,5 +196,7 @@
             alert("Failed to stop launcher: " + (err?.message || err));
         }
     }
+
+    document.addEventListener("DOMContentLoaded", initLauncherUpdateButton);
 </script>
 {{ end }}

@@ -125,9 +125,17 @@ fi
 if [[ -f "$DIST_DIR/Kimmio-Launcher-Setup-windows-amd64.exe" ]]; then
   add_entry "windows/amd64" "installer" "Kimmio-Launcher-Setup-windows-amd64.exe" "Kimmio-Launcher-Setup-windows-amd64.exe" "true"
 fi
+linux_deb_name="Kimmio-Launcher-${VERSION}-linux-amd64.deb"
+if [[ -f "$DIST_DIR/$linux_deb_name" ]]; then
+  add_entry "linux/amd64" "installer" "$linux_deb_name" "$linux_deb_name" "true"
+fi
 linux_archive_name="Kimmio-Launcher-${VERSION}-linux-amd64.tar.gz"
 if [[ -f "$DIST_DIR/$linux_archive_name" ]]; then
-  add_entry "linux/amd64" "archive" "$linux_archive_name" "$linux_archive_name" "true"
+  linux_archive_recommended="false"
+  if [[ ! -f "$DIST_DIR/$linux_deb_name" && ! -f "$DIST_DIR/Kimmio-Launcher-${VERSION}-linux-amd64.AppImage" ]]; then
+    linux_archive_recommended="true"
+  fi
+  add_entry "linux/amd64" "archive" "$linux_archive_name" "$linux_archive_name" "$linux_archive_recommended"
 fi
 linux_appimage_name="Kimmio-Launcher-${VERSION}-linux-amd64.AppImage"
 if [[ -f "$DIST_DIR/$linux_appimage_name" ]]; then

@@ -18,6 +18,7 @@ var embedded embed.FS
 func main() {
 	log.Printf("Kimmio Launcher %s (%s)", appVersion, gitCommit)
 	cfg := config.Load(buildMode)
+	launcher.SetBuildInfo(appVersion, gitCommit)
 	if err := launcher.Run(embedded, cfg); err != nil {
 		log.Fatal(err)
 	}
