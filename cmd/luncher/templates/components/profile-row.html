@@ -1,0 +1,492 @@
+{{ define "profile-row" }}
+<div class="profile-card" data-profile-id="{{ .ID }}">
+    <div class="card-glow"></div>
+
+    <div class="card-content">
+        <div class="card-header">
+            <div class="identity-group">
+                <div class="text-group">
+                    <span class="profile-id">{{ .ID }}</span>
+                    <span class="profile-version">
+                        <i class="fa-solid fa-code-branch"></i> Release v{{ .Version }}
+                    </span>
+                </div>
+            </div>
+            <div class="status-pill {{ if eq .RuntimeStatus "running" }}online{{ else if eq .RuntimeStatus "starting" }}starting{{ else if eq .RuntimeStatus "unhealthy" }}unhealthy{{ else }}idle{{ end }}">
+                <span class="pulse-dot"></span>
+                <span>{{ if eq .RuntimeStatus "running" }}RUNNING{{ else if eq .RuntimeStatus "starting" }}STARTING{{ else if eq .RuntimeStatus "unhealthy" }}UNHEALTHY{{ else if .Enabled }}ENABLED{{ else }}STOPPED{{ end }}</span>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="resource-grid">
+                <div class="res-item" title="Memory Allocation">
+                    <i class="fa-solid fa-memory"></i>
+                    <div class="res-meta">
+                        <span class="res-label">RAM</span>
+                        <span class="res-val">{{ .Resources.Limits.Memory }}</span>
+                    </div>
+                </div>
+                <div class="res-item" title="Processing Power">
+                    <i class="fa-solid fa-microchip"></i>
+                    <div class="res-meta">
+                        <span class="res-label">CPU</span>
+                        <span class="res-val">{{ .Resources.Limits.CPUs }} Cores</span>
+                    </div>
+                </div>
+                <div class="res-item" title="Network Access">
+                    <i class="fa-solid fa-ethernet"></i>
+                    <div class="res-meta">
+                        <span class="res-label">PORT</span>
+                        <span class="res-val">{{ range .Ports }}{{ .Host }}{{ end }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer">
+            <div class="action-primary">
+                {{ if .Running }}
+                <button class="launch-action-kimmio" onclick="openProfile('{{ .ID }}', {{ range .Ports }}{{ .Host }}{{ end }})">
+                    <i class="fa-solid fa-up-right-from-square"></i>
+                    <span>Open</span>
+                </button>
+                {{ else }}
+                <button class="util-btn action-enable js-profile-action" onclick="enableProfile('{{ .ID }}', this)">
+                    <i class="fa-solid fa-play"></i>
+                    <span>Enable</span>
+                </button>
+                {{ end }}
+                {{ if .Enabled }}
+                <button class="util-btn action-stop js-profile-action" onclick="stopProfile('{{ .ID }}', this)">
+                    <i class="fa-solid fa-stop"></i>
+                    <span>Stop</span>
+                </button>
+                {{ end }}
+                <details class="action-menu">
+                    <summary class="util-btn action-more">
+                        <i class="fa-solid fa-ellipsis"></i>
+                        <span>More actions</span>
+                    </summary>
+                    <div class="action-menu-panel">
+                        <button class="util-btn action-update js-profile-action" onclick="updateProfileVersion('{{ .ID }}', '{{ .Version }}', this)">
+                            <i class="fa-solid fa-arrow-up"></i>
+                            <span>Update version</span>
+                        </button>
+                        <button class="util-btn action-secrets js-profile-action" onclick="regenerateSecrets('{{ .ID }}', this)" title="Generate new JWT and encryption keys">
+                            <i class="fa-solid fa-key"></i>
+                            <span>Regenerate secrets</span>
+                        </button>
+                        <button class="util-btn action-recreate js-profile-action" onclick="recreateProfile('{{ .ID }}', this)" title="Destructive: resets volumes/data">
+                            <i class="fa-solid fa-rotate-right"></i>
+                            <span>Recreate</span>
+                        </button>
+                        <button class="util-btn delete js-profile-action" onclick="deleteProfile('{{ .ID }}', this)">
+                            <i class="fa-solid fa-trash"></i>
+                            <span>Delete</span>
+                        </button>
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <div class="row-feedback" data-feedback="{{ .ID }}">
+            {{ if .LastActionResult }}
+            <div class="feedback-line">{{ .LastActionResult }}</div>
+            {{ end }}
+            {{ if .ActionLog }}
+            <div class="feedback-log">{{ index .ActionLog 0 }}</div>
+            {{ end }}
+            {{ if and (eq .LastAction "enable") (eq .LastActionStatus "failed") }}
+            <button class="retry-link" onclick="retryEnable('{{ .ID }}', this)">
+                <i class="fa-solid fa-rotate-right"></i> Retry Enable
+            </button>
+            {{ end }}
+            {{ if and (eq .LastAction "version") (eq .LastActionStatus "failed") }}
+            <button class="retry-link" onclick="retryVersion('{{ .ID }}', '{{ .LastRequestedVersion }}', this)">
+                <i class="fa-solid fa-rotate-right"></i> Retry Version Update
+            </button>
+            {{ end }}
+        </div>
+    </div>
+</div>
+
+<style>
+
+    :root {
+        --primary-glow: #2dd798;
+        --bg-dark: #0a0a0c;
+        --card-bg: rgba(20, 20, 24, 0.8);
+        --border-color: rgba(255, 255, 255, 0.08);
+        --text-muted: #80808b;
+    }
+
+    /* Card Container */
+    .profile-card {
+        position: relative;
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 24px;
+        margin-bottom: 16px;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        /*overflow: visible;*/
+
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 24px;
+        padding: 40px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(20px);
+    }
+
+
+
+    .profile-card:hover {
+        box-shadow: 0 20px 40px -20px rgba(0, 255, 170, 0.02);
+    }
+
+    .card-glow {
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        /*background: radial-gradient(circle at center, rgba(0, 255, 170, 0.32) 0%, transparent 70%);*/
+        opacity: 0;
+        transition: opacity 0.5s;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .profile-card:hover .card-glow {
+        opacity: 0.09;
+    }
+
+    .card-content {
+        position: relative;
+        z-index: 1;
+        overflow: visible;
+    }
+
+    /* Header Section */
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 24px;
+    }
+
+    .identity-group {
+        padding-left: 1rem;
+        display: flex;
+        gap: 16px;
+        align-items: center;
+    }
+
+    .icon-box {
+        width: 48px;
+        height: 48px;
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: var(--kimmio-emerald);
+        border: 1px solid rgba(0, 255, 170, 0.1);
+    }
+
+    .profile-id {
+        display: block;
+        font-size: 20px;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -0.5px;
+    }
+
+    .profile-version {
+        font-size: 12px;
+        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* Status Pills */
+    .status-pill {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 100px;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 1px;
+    }
+
+    .status-pill.online {
+        background: rgba(0, 255, 170, 0.1);
+        color: var(--kimmio-emerald);
+    }
+
+    .status-pill.idle {
+        background: rgba(255, 255, 255, 0.05);
+        color: #888;
+    }
+
+    .status-pill.starting {
+        background: rgba(245, 185, 74, 0.12);
+        color: #f5b94a;
+    }
+
+    .status-pill.unhealthy {
+        background: rgba(255, 68, 102, 0.12);
+        color: #ff4466;
+    }
+
+    .pulse-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .online .pulse-dot {
+        animation: pulse-green 2s infinite;
+    }
+
+    @keyframes pulse-green {
+        0% {
+            box-shadow: 0 0 0 0 rgba(0, 255, 170, 0.7);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(0, 255, 170, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(0, 255, 170, 0);
+        }
+    }
+
+    /* Body Section */
+    .resource-grid {
+        display: flex;
+        gap: 40px;
+        padding: 16px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 14px;
+        margin-bottom: 24px;
+    }
+
+    .res-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .res-item i {
+        font-size: 16px;
+        color: #444;
+    }
+
+    .res-meta {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .res-label {
+        font-size: 9px;
+        font-weight: 800;
+        color: #555;
+        text-transform: uppercase;
+    }
+
+    .res-val {
+        font-size: 14px;
+        color: #bbb;
+        font-weight: 600;
+    }
+
+    /* Footer Section */
+    .card-footer {
+        display: flex;
+        justify-content: flex-start;
+        padding-left: 0.5rem;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .action-primary {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .action-menu {
+        position: relative;
+    }
+
+    .action-menu summary {
+        list-style: none;
+    }
+
+    .action-menu summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .action-more {
+        border-color: rgba(255, 255, 255, 0.22);
+    }
+
+    .action-more:hover {
+        border-color: rgba(255, 255, 255, 0.4);
+        color: #fff;
+    }
+
+    .action-menu-panel {
+        position: fixed;
+        right: 28px;
+        bottom: 28px;
+        width: min(320px, calc(100vw - 24px));
+        display: none;
+        flex-direction: column;
+        gap: 6px;
+        padding: 10px;
+        border-radius: 12px;
+        background: rgba(10, 10, 14, 0.98);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45);
+        z-index: 999;
+    }
+
+    .action-menu[open] .action-menu-panel {
+        display: flex;
+    }
+
+    .action-menu-panel .util-btn {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .profile-card.is-busy .action-menu summary {
+        pointer-events: none;
+        opacity: 0.6;
+    }
+
+    .util-btn,
+    .launch-action-kimmio {
+        height: 40px;
+        padding: 0 14px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.03);
+        color: #b8b8b8;
+        cursor: pointer;
+        transition: 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .util-btn i,
+    .launch-action-kimmio i {
+        font-size: 11px;
+    }
+
+    .launch-action-kimmio {
+        border-color: rgba(0, 255, 170, 0.35);
+        color: #e9fffa;
+        background: linear-gradient(180deg, rgba(0, 255, 170, 0.11), rgba(0, 255, 170, 0.04));
+    }
+
+    .launch-action-kimmio:hover {
+        border-color: rgba(0, 255, 170, 0.65);
+        color: #2dd798;
+        transform: translateY(-1px);
+    }
+
+    .action-enable {
+        border-color: rgba(45, 215, 152, 0.35);
+    }
+
+    .action-enable:hover {
+        color: #2dd798;
+        border-color: rgba(45, 215, 152, 0.65);
+        background: rgba(45, 215, 152, 0.08);
+    }
+
+    .action-stop:hover {
+        color: #f5b94a;
+        border-color: rgba(245, 185, 74, 0.65);
+        background: rgba(245, 185, 74, 0.08);
+    }
+
+    .action-recreate:hover {
+        color: #c38dff;
+        border-color: rgba(195, 141, 255, 0.65);
+        background: rgba(195, 141, 255, 0.08);
+    }
+
+    .action-update:hover {
+        color: #6db7ff;
+        border-color: rgba(109, 183, 255, 0.65);
+        background: rgba(109, 183, 255, 0.08);
+    }
+
+    .action-secrets:hover {
+        color: #ffd36d;
+        border-color: rgba(255, 211, 109, 0.65);
+        background: rgba(255, 211, 109, 0.08);
+    }
+
+    .util-btn.delete:hover {
+        color: #ff4466;
+        border-color: rgba(255, 68, 102, 0.55);
+        background: rgba(255, 68, 102, 0.08);
+    }
+
+    .row-feedback {
+        margin-top: 12px;
+        padding-left: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .feedback-line {
+        font-size: 12px;
+        color: #d2d2d5;
+    }
+
+    .feedback-log {
+        font-size: 11px;
+        color: #8d8d94;
+        font-family: var(--mono);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .retry-link {
+        margin-top: 2px;
+        align-self: flex-start;
+        background: transparent;
+        border: none;
+        color: #7cc8ff;
+        font-size: 12px;
+        padding: 0;
+        cursor: pointer;
+    }
+
+    .retry-link:hover {
+        color: #9ed7ff;
+    }
+
+</style>
+{{ end }}

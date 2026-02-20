@@ -2,8 +2,6 @@
 data/
 dist/
 
-# Local binaries
-luncher
 kimmo
 
 # OS files

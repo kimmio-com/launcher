@@ -1,0 +1,140 @@
+{{ define "header-component" }}
+<header class="window-header">
+    <div class="brand-chip">
+        <div class="brand-main">
+            <img class="brand-logo" src="/static/logo.svg" alt="Kimmio logo"/>
+            <div class="brand-copy">
+                <span class="brand-title">Kimmio Launcher</span>
+                <span class="brand-subtitle">Container profile control</span>
+            </div>
+        </div>
+        <button class="stop-launcher-btn" id="stopLauncherBtn" type="button" onclick="stopLauncherServer()">
+            <i class="fa-solid fa-power-off"></i>
+            <span>Stop Launcher</span>
+        </button>
+    </div>
+</header>
+
+<style>
+    .window-header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        min-height: 76px;
+        padding: 14px 20px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        flex-shrink: 0;
+    }
+
+    .header-actions {
+        display: none;
+    }
+
+    .brand-chip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        width: 100%;
+        padding: 10px 12px 10px 10px;
+        border-radius: 12px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
+        border: 1px solid rgba(255, 255, 255, 0.09);
+    }
+
+    .brand-main {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .brand-logo {
+        width: 30px;
+        height: 30px;
+        display: block;
+        filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
+    }
+
+    .brand-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+    }
+
+    .brand-title {
+        color: #f4f4f5;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.7px;
+        text-transform: uppercase;
+        line-height: 1.1;
+    }
+
+    .brand-subtitle {
+        color: #8f8f98;
+        font-size: 10px;
+        line-height: 1.1;
+        letter-spacing: 0.35px;
+    }
+
+    .stop-launcher-btn {
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 11px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
+        color: #d4d4db;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .stop-launcher-btn:hover {
+        border-color: rgba(255, 96, 96, 0.58);
+        background: linear-gradient(180deg, rgba(255, 96, 96, 0.2), rgba(255, 96, 96, 0.08));
+        color: #ffe0e0;
+    }
+
+    .stop-launcher-btn.is-busy {
+        opacity: 0.7;
+        cursor: wait;
+    }
+</style>
+
+<script>
+    async function stopLauncherServer() {
+        const withCsrf = window.withCsrf || ((init) => init || {});
+        const btn = document.getElementById("stopLauncherBtn");
+        if (!btn || btn.classList.contains("is-busy")) {
+            return;
+        }
+
+        btn.classList.add("is-busy");
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Stopping...</span>';
+
+        try {
+            await fetch("/api/server/stop", withCsrf({method: "POST"}));
+            setTimeout(() => {
+                window.location.href = "about:blank";
+            }, 300);
+        } catch (err) {
+            btn.classList.remove("is-busy");
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-power-off"></i><span>Stop Launcher</span>';
+            alert("Failed to stop launcher: " + (err?.message || err));
+        }
+    }
+</script>
+{{ end }}

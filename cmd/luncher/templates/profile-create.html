@@ -1,0 +1,561 @@
+{{ define "page:profile-create.html"  }}
+<div class="workspace-inner">
+    <header class="registry-header">
+        <div class="branding">
+            <a href="/" class="back-link">
+                <i class="fa-solid fa-arrow-left-long"></i> Return to profiles
+            </a>
+            <p class="profile-counter">{{ .ProfileCount }}/{{ .MaxProfiles }} profiles</p>
+        </div>
+    </header>
+
+    {{ if and .MaxReached (not .IsEdit) }}
+    <div class="limit-warning" role="alert" aria-live="polite">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div class="limit-warning-copy">
+            <strong>Profile Limit Reached</strong>
+            <span>Maximum 3 profiles reached. Delete one profile before creating a new one.</span>
+        </div>
+    </div>
+    {{ end }}
+
+    <form id="createProfileForm"
+          method="post"
+          action="/api/profiles"
+          class="glass-vault">
+        <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+
+        <div class="vault-section">
+            <div class="section-label">
+                <span class="label-icon"><i class="fa-solid fa-fingerprint"></i></span>
+                <span class="label-text">Identity & Versioning</span>
+            </div>
+            <div class="input-row">
+                <div class="field">
+                    <label>Profile name <span class="req">*</span></label>
+                    <input type="text"
+                           value="{{ .Profile.ID }}"
+                           name="id"
+                           placeholder="e.g. omega-production-01"
+                           {{ if .IsEdit }}readonly{{ end }}
+                           required
+                           autofocus>
+                </div>
+
+                <div class="field " style="width: 100%">
+                    <label>Version <span class="req">*</span></label>
+                    <div class="select-custom">
+                        <select name="version" style="width: 100%">
+                            <option value="latest" {{ if or (eq .Profile.Version "") (eq .Profile.Version "latest") }}selected{{ end }}>Latest</option>
+                            <option value="1.0.1" {{ if eq .Profile.Version "1.0.1" }}selected{{ end }}>1.0.1</option>
+                            <option value="1.0.0" {{ if eq .Profile.Version "1.0.0" }}selected{{ end }}>1.0.0</option>
+                        </select>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+        <div class="vault-section">
+            <div class="section-label">
+                <span class="label-icon"><i class="fa-solid fa-network-wired"></i></span>
+                <span class="label-text">Network Bridge</span>
+            </div>
+            <div class="input-row">
+                <div class="field">
+                    <label>Host Port <span class="req">*</span></label>
+                    <input type="number" name="hostPort"
+                           value="{{ .HostPort }}"
+                           placeholder="8080" required>
+                </div>
+
+                <div class="field">
+                    <label>Domain (Optional)</label>
+                    <input type="text" name="domain"
+                           value="{{ index .Profile.Env "APP_DOMAIN" }}"
+                           placeholder="localhost">
+                </div>
+            </div>
+        </div>
+
+
+        <div class="vault-section">
+            <div class="section-label">
+                <span class="label-icon"><i class="fa-solid fa-microchip"></i></span>
+                <span class="label-text">Resource Allocation (Optional)</span>
+            </div>
+            <div class="input-row">
+                <div class="field" style="width: 100%">
+                    <label>Memory Limit</label>
+                    <div class="select-custom">
+                        <select name="memory" style="width: 100%">
+                            <option value="" {{ if eq .Profile.Resources.Limits.Memory "" }}selected{{ end }}>Default (Auto)</option>
+                            <option value="512mb" {{ if eq .Profile.Resources.Limits.Memory "512mb" }}selected{{ end }}>512 MB</option>
+                            <option value="1gb" {{ if eq .Profile.Resources.Limits.Memory "1gb" }}selected{{ end }}>1.0 GB</option>
+                            <option value="2gb" {{ if eq .Profile.Resources.Limits.Memory "2gb" }}selected{{ end }}>2.0 GB</option>
+                            <option value="4gb" {{ if eq .Profile.Resources.Limits.Memory "4gb" }}selected{{ end }}>4.0 GB</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>CPU Cores</label>
+                    <div class="input-with-suffix">
+                        <input type="number" name="cpus" step="0.5" placeholder="1.0" min="0.5"
+                               value="{{ if gt .Profile.Resources.Limits.CPUs 0.0 }}{{ printf "%.1f" .Profile.Resources.Limits.CPUs }}{{ else }}1.0{{ end }}">
+                        <span class="suffix">vCPU</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="vault-section">
+            <div class="section-label">
+                <span class="label-icon"><i class="fa-solid fa-key"></i></span>
+                <span class="label-text">Security (Optional)</span>
+            </div>
+            <div class="input-row">
+                <div class="field">
+                    <label>JWT Secret</label>
+                    <div class="copy-field">
+                        <input type="text"
+                               name="jwtSecret"
+                               value="{{ index .Profile.Env "JWT_SECRET" }}"
+                               placeholder="Set app JWT secret">
+                        <button type="button" class="copy-btn" onclick="copyField(this)">Copy</button>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>FLUMIO_ENC_KEY_V0</label>
+                    <div class="copy-field">
+                        <input type="text"
+                               name="flumioEncKeyV0"
+                               value="{{ index .Profile.Env "FLUMIO_ENC_KEY_V0" }}"
+                               placeholder="Optional encryption key">
+                        <button type="button" class="copy-btn" onclick="copyField(this)">Copy</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="vault-footer">
+            <div class="submit-note">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>Finalize by clicking Initialize Profile</span>
+            </div>
+            <button type="submit" class="deploy-action-btn" {{ if and .MaxReached (not .IsEdit) }}disabled{{ end }}>
+                <span class="shimmer"></span>
+                <span class="btn-content">
+                        <i class="fa-solid fa-rocket"></i>
+                        <span>{{ if .IsEdit }}Update Profile{{ else }}Initialize Profile{{ end }}</span>
+                    </span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    :root {
+        --primary-glow: #2dd798;
+        --bg-dark: #0a0a0c;
+        --card-bg: rgba(20, 20, 24, 0.8);
+        --border-color: rgba(255, 255, 255, 0.08);
+        --text-muted: #80808b;
+    }
+
+
+    .workspace-inner {
+        /*max-width: 640px;*/
+        /*margin: 0 auto;*/
+        margin: 0 3rem;
+        margin-top: 2rem;
+        margin-bottom: 3rem;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: opacity 360ms ease, transform 420ms ease;
+    }
+
+    .workspace-inner.is-loaded {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* 2. Header & Typography */
+    .back-link {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 24px;
+        transition: color 0.3s;
+    }
+
+    .back-link:hover {
+        color: var(--primary-glow);
+    }
+
+    .profile-counter {
+        margin: 0 0 18px;
+        display: inline-flex;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.03);
+
+        color: #c8c8c8;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .title-gradient {
+        font-size: 2.2rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        background: linear-gradient(135deg, #fff 0%, #a0a0a0 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin: 0 0 8px 0;
+    }
+
+    .subtitle {
+        color: var(--text-muted);
+        font-size: 1rem;
+        margin-bottom: 40px;
+    }
+
+    /* 3. The Glass Vault */
+    .glass-vault {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 24px;
+        padding: 40px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(20px);
+
+    }
+
+    .vault-section {
+        margin-bottom: 40px;
+        opacity: 0;
+        transform: translateY(12px) scale(0.99);
+        animation: createSectionEnter 560ms cubic-bezier(0.2, 0.75, 0.2, 1) forwards;
+    }
+
+    .section-label {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .label-icon {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px;
+        color: var(--primary-glow);
+        font-size: 0.9rem;
+    }
+
+    .label-text {
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: #fff;
+    }
+
+    /* 4. Form Components */
+    .input-row {
+        display: flex;
+        gap: 24px;
+    }
+
+    .copy-field {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .copy-field input {
+        flex: 1;
+    }
+
+    .copy-btn {
+        height: 38px;
+        padding: 0 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.03);
+        color: #ddd;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        cursor: pointer;
+    }
+
+    .copy-btn:hover {
+        border-color: rgba(45, 215, 152, 0.55);
+        color: #2dd798;
+    }
+
+    .limit-warning {
+        margin-bottom: 16px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 11px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(245, 185, 74, 0.45);
+        background: linear-gradient(180deg, rgba(245, 185, 74, 0.16), rgba(245, 185, 74, 0.07));
+        color: #f8d18a;
+    }
+
+    .limit-warning i {
+        margin-top: 2px;
+        color: #f5b94a;
+    }
+
+    .limit-warning-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .limit-warning-copy strong {
+        font-size: 12px;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+    }
+
+    .limit-warning-copy span {
+        font-size: 12px;
+        color: #f4ddaf;
+    }
+
+    @keyframes createSectionEnter {
+        from {
+            opacity: 0;
+            transform: translateY(12px) scale(0.99);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .workspace-inner,
+        .vault-section {
+            animation: none !important;
+            transition: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+        }
+    }
+
+    .field {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        flex: 1;
+    }
+
+    .field.slim {
+        flex: 0 0 140px;
+    }
+
+    label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #b0b0b8;
+    }
+
+    .req {
+        color: var(--primary-glow);
+        margin-left: 2px;
+    }
+
+    input, select {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 14px 16px;
+        color: #fff;
+        font-size: 0.95rem;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    input:focus {
+        outline: none;
+        border-color: var(--primary-glow);
+        background: rgba(0, 255, 162, 0.03);
+        box-shadow: 0 0 0 4px rgba(0, 255, 162, 0.1);
+    }
+
+    .readonly-input {
+        background: rgba(255, 255, 255, 0.02);
+        color: #555;
+        cursor: not-allowed;
+    }
+
+    /* Suffix Input Style */
+    .input-with-suffix {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-with-suffix input {
+        width: 100%;
+        padding-right: 60px;
+    }
+
+    .suffix {
+        position: absolute;
+        right: 16px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #444;
+    }
+
+    /* Port Bridge UI */
+    .port-bridge-container {
+        display: flex;
+        align-items: flex-end;
+        gap: 16px;
+    }
+
+    .bridge-separator {
+        padding-bottom: 14px;
+        color: #333;
+    }
+
+    /* 5. The Deploy Button */
+    .vault-footer {
+        margin-top: 10px;
+        padding-top: 32px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .submit-note {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 14px;
+        color: #cdeedd;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .submit-note i {
+        color: var(--primary-glow);
+    }
+
+    .deploy-action-btn {
+        position: relative;
+        width: 100%;
+        height: 40px;
+        padding: 0 16px;
+        background: linear-gradient(180deg, rgba(0, 255, 170, 0.11), rgba(0, 255, 170, 0.04));
+        border: 1px solid rgba(0, 255, 170, 0.35);
+        color: #e9fffa;
+        border-radius: 10px;
+        cursor: pointer;
+        overflow: hidden;
+        transition: all 0.2s ease;
+    }
+
+    .deploy-action-btn:hover {
+        border-color: rgba(0, 255, 170, 0.65);
+        transform: translateY(-1px);
+        box-shadow: 0 12px 20px -16px rgba(45, 215, 152, 0.9);
+    }
+
+    .deploy-action-btn:active {
+        transform: scale(0.97) translateY(1px);
+    }
+
+    .btn-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        color: #e9fffa;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+    }
+
+    /*.shimmer {*/
+    /*    position: absolute;*/
+    /*    top: 0;*/
+    /*    left: -100%;*/
+    /*    width: 50%;*/
+    /*    height: 100%;*/
+    /*    background: linear-gradient(90deg, transparent, rgba(0, 255, 162, 0.2), transparent);*/
+    /*    animation: slide 3s infinite;*/
+    /*}*/
+
+    @keyframes slide {
+        0% {
+            left: -100%;
+        }
+        100% {
+            left: 200%;
+        }
+    }
+</style>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const workspace = document.querySelector(".workspace-inner");
+        if (workspace) {
+            requestAnimationFrame(() => workspace.classList.add("is-loaded"));
+        }
+        const sections = Array.from(document.querySelectorAll(".vault-section"));
+        sections.forEach((section, index) => {
+            section.style.animationDelay = `${90 + index * 70}ms`;
+        });
+    });
+
+    async function copyField(btn) {
+        const wrapper = btn.closest(".copy-field");
+        if (!wrapper) return;
+        const input = wrapper.querySelector("input");
+        if (!input) return;
+        const text = (input.value || "").trim();
+        if (!text) return;
+
+        try {
+            await navigator.clipboard.writeText(text);
+            const old = btn.textContent;
+            btn.textContent = "Copied";
+            setTimeout(() => {
+                btn.textContent = old;
+            }, 1200);
+        } catch (_) {
+            input.focus();
+            input.select();
+            document.execCommand("copy");
+            const old = btn.textContent;
+            btn.textContent = "Copied";
+            setTimeout(() => {
+                btn.textContent = old;
+            }, 1200);
+        }
+    }
+</script>
+{{ end }}
