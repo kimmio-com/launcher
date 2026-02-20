@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,6 +28,19 @@ type Server struct {
 }
 
 var appCfg = config.Load("dev")
+var launcherAppVersion = "dev"
+var launcherGitCommit = "unknown"
+
+func SetBuildInfo(version, commit string) {
+	v := strings.TrimSpace(version)
+	c := strings.TrimSpace(commit)
+	if v != "" {
+		launcherAppVersion = v
+	}
+	if c != "" {
+		launcherGitCommit = c
+	}
+}
 
 func NewServer(cfg config.Config) *Server {
 	return &Server{
@@ -107,17 +121,41 @@ func Run(embedded fs.FS, cfg config.Config) error {
 	mux.HandleFunc("/api/profiles/", withMutationGuard(srv.handleProfileAction))
 	mux.HandleFunc("/api/jobs/", srv.handleJobStatus)
 	mux.HandleFunc("/api/kimmio/versions", srv.handleKimmioVersions)
+	mux.HandleFunc("/api/launcher/update", srv.handleLauncherUpdate)
 	mux.HandleFunc("/api/server/stop", withMutationGuard(handleServerStop))
 	mux.HandleFunc("/__livereload", liveReloadHandler)
 
 	launcherURL := fmt.Sprintf("http://localhost:%d", port)
-	fmt.Printf("Kimmio Launcher running at %s\n", launcherURL)
+	printStartupBanner(launcherURL)
 
 	if cfg.BuildMode == "prod" {
 		openBrowser(port)
 	}
-	logInfo("server_start", map[string]any{"port": port, "url": launcherURL, "data_dir": cfg.DataDir, "build_mode": cfg.BuildMode})
+	logInfo("server_start", map[string]any{
+		"port":           port,
+		"url":            launcherURL,
+		"data_dir":       cfg.DataDir,
+		"build_mode":     cfg.BuildMode,
+		"app_version":    launcherAppVersion,
+		"build_commit":   launcherGitCommit,
+		"runtime_goos":   runtime.GOOS,
+		"runtime_goarch": runtime.GOARCH,
+	})
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
+}
+
+func printStartupBanner(url string) {
+	const (
+		reset      = "\033[0m"
+		bold       = "\033[1m"
+		cyan       = "\033[36m"
+		green      = "\033[32m"
+		brightGray = "\033[90m"
+	)
+
+	fmt.Printf("%s%sKimmio Launcher%s\n", bold, cyan, reset)
+	fmt.Printf("%sWelcome to Kimmio Launcher%s\n", green, reset)
+	fmt.Printf("%sTo visit it go to URL:%s %s%s%s\n", brightGray, reset, bold, url, reset)
 }
 
 func handleServerStop(w http.ResponseWriter, r *http.Request) {

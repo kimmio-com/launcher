@@ -611,6 +611,34 @@
         if (workspace) {
             requestAnimationFrame(() => workspace.classList.add("is-loaded"));
         }
+        const closeAllActionMenus = (except) => {
+            document.querySelectorAll(".action-menu[open]").forEach((menu) => {
+                if (!except || menu !== except) {
+                    menu.open = false;
+                }
+            });
+        };
+        document.querySelectorAll(".action-menu").forEach((menu) => {
+            const summary = menu.querySelector("summary");
+            if (!summary) return;
+            summary.addEventListener("click", () => {
+                // Wait for native <details> toggle, then close other menus.
+                setTimeout(() => {
+                    if (menu.open) {
+                        closeAllActionMenus(menu);
+                    }
+                }, 0);
+            });
+        });
+        document.addEventListener("click", (event) => {
+            if (event.target.closest(".action-menu")) return;
+            closeAllActionMenus();
+        });
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+                closeAllActionMenus();
+            }
+        });
 
         const loadingBanner = document.getElementById("profilesLoadingBanner");
         const cards = Array.from(document.querySelectorAll(".profile-vault .profile-card, .profile-vault .kimmio-empty-rich"));

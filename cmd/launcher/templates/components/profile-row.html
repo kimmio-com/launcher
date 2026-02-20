@@ -56,7 +56,7 @@
                 {{ else }}
                 <button class="util-btn action-enable js-profile-action" onclick="enableProfile('{{ .ID }}', this)">
                     <i class="fa-solid fa-play"></i>
-                    <span>Enable</span>
+                    <span>Enable now</span>
                 </button>
                 {{ end }}
                 {{ if .Enabled }}
@@ -93,6 +93,12 @@
         </div>
 
         <div class="row-feedback" data-feedback="{{ .ID }}">
+            {{ if .Enabled }}
+            <a class="profile-local-url" href="http://localhost:{{ range .Ports }}{{ .Host }}{{ end }}" target="_blank" rel="noopener noreferrer">
+                <i class="fa-solid fa-link"></i>
+                <span>http://localhost:{{ range .Ports }}{{ .Host }}{{ end }}</span>
+            </a>
+            {{ end }}
             {{ if .LastActionResult }}
             <div class="feedback-line">{{ .LastActionResult }}</div>
             {{ end }}
@@ -440,13 +446,28 @@
     }
 
     .action-enable {
-        border-color: rgba(45, 215, 152, 0.35);
+        border-color: rgba(45, 215, 152, 0.7);
+        background: linear-gradient(180deg, rgba(45, 215, 152, 0.25), rgba(45, 215, 152, 0.11));
+        color: #eafff5;
+        box-shadow: 0 0 0 1px rgba(45, 215, 152, 0.25), 0 10px 24px -14px rgba(45, 215, 152, 0.9);
+        animation: enablePulse 1.8s ease-in-out infinite;
     }
 
     .action-enable:hover {
-        color: #2dd798;
-        border-color: rgba(45, 215, 152, 0.65);
-        background: rgba(45, 215, 152, 0.08);
+        color: #ffffff;
+        border-color: rgba(45, 215, 152, 0.95);
+        background: linear-gradient(180deg, rgba(45, 215, 152, 0.36), rgba(45, 215, 152, 0.17));
+        transform: translateY(-1px);
+        box-shadow: 0 0 0 1px rgba(45, 215, 152, 0.38), 0 14px 26px -14px rgba(45, 215, 152, 1);
+    }
+
+    @keyframes enablePulse {
+        0%, 100% {
+            box-shadow: 0 0 0 1px rgba(45, 215, 152, 0.2), 0 10px 24px -14px rgba(45, 215, 152, 0.75);
+        }
+        50% {
+            box-shadow: 0 0 0 1px rgba(45, 215, 152, 0.45), 0 14px 30px -14px rgba(45, 215, 152, 1);
+        }
     }
 
     .action-stop:hover {
@@ -488,6 +509,29 @@
         display: flex;
         flex-direction: column;
         gap: 3px;
+    }
+
+    .profile-local-url {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #8fd2ff;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        width: fit-content;
+        max-width: 100%;
+    }
+
+    .profile-local-url span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .profile-local-url:hover {
+        color: #b9e6ff;
+        text-decoration: underline;
     }
 
     .feedback-line {

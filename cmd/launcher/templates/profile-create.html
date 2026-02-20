@@ -30,7 +30,7 @@
                 <span class="label-icon"><i class="fa-solid fa-fingerprint"></i></span>
                 <span class="label-text">Identity & Versioning</span>
             </div>
-            <div class="input-row">
+            <div class="input-row ">
                 <div class="field">
                     <label>Profile name <span class="req">*</span></label>
                     <input type="text"
@@ -46,9 +46,12 @@
                     <label>Version <span class="req">*</span></label>
                     <div class="select-custom">
                         <select name="version" style="width: 100%">
-                            <option value="latest" {{ if or (eq .Profile.Version "") (eq .Profile.Version "latest") }}selected{{ end }}>Latest</option>
-                            <option value="1.0.1" {{ if eq .Profile.Version "1.0.1" }}selected{{ end }}>1.0.1</option>
-                            <option value="1.0.0" {{ if eq .Profile.Version "1.0.0" }}selected{{ end }}>1.0.0</option>
+                            <option value="latest" {{ if or (eq .Profile.Version
+                            "") (eq .Profile.Version "latest") }}selected{{ end }}>Latest</option>
+                            <option value="1.0.1" {{ if eq .Profile.Version
+                            "1.0.1" }}selected{{ end }}>1.0.1</option>
+                            <option value="1.0.0" {{ if eq .Profile.Version
+                            "1.0.0" }}selected{{ end }}>1.0.0</option>
                         </select>
                     </div>
                 </div>
@@ -64,6 +67,8 @@
             </summary>
 
             <div class="advanced-content">
+
+
                 <div class="vault-section">
                     <div class="section-label">
                         <span class="label-icon"><i class="fa-solid fa-network-wired"></i></span>
@@ -81,7 +86,7 @@
                             <label>Domain (Optional)</label>
                             <input type="text" name="domain"
                                    value="{{ index .Profile.Env "APP_DOMAIN" }}"
-                                   placeholder="localhost">
+                            placeholder="localhost">
                         </div>
                     </div>
                 </div>
@@ -96,11 +101,16 @@
                             <label>Memory Limit</label>
                             <div class="select-custom">
                                 <select name="memory" style="width: 100%">
-                                    <option value="" {{ if eq .Profile.Resources.Limits.Memory "" }}selected{{ end }}>Default (Auto)</option>
-                                    <option value="512mb" {{ if eq .Profile.Resources.Limits.Memory "512mb" }}selected{{ end }}>512 MB</option>
-                                    <option value="1gb" {{ if eq .Profile.Resources.Limits.Memory "1gb" }}selected{{ end }}>1.0 GB</option>
-                                    <option value="2gb" {{ if eq .Profile.Resources.Limits.Memory "2gb" }}selected{{ end }}>2.0 GB</option>
-                                    <option value="4gb" {{ if eq .Profile.Resources.Limits.Memory "4gb" }}selected{{ end }}>4.0 GB</option>
+                                    <option value="" {{ if eq .Profile.Resources.Limits.Memory
+                                    "" }}selected{{ end }}>Default (Auto)</option>
+                                    <option value="512mb" {{ if eq .Profile.Resources.Limits.Memory
+                                    "512mb" }}selected{{ end }}>512 MB</option>
+                                    <option value="1gb" {{ if eq .Profile.Resources.Limits.Memory
+                                    "1gb" }}selected{{ end }}>1.0 GB</option>
+                                    <option value="2gb" {{ if eq .Profile.Resources.Limits.Memory
+                                    "2gb" }}selected{{ end }}>2.0 GB</option>
+                                    <option value="4gb" {{ if eq .Profile.Resources.Limits.Memory
+                                    "4gb" }}selected{{ end }}>4.0 GB</option>
                                 </select>
                             </div>
                         </div>
@@ -121,25 +131,25 @@
                         <span class="label-icon"><i class="fa-solid fa-key"></i></span>
                         <span class="label-text">Security (Optional)</span>
                     </div>
-                    <div class="input-row">
+                    <div class="input-row input-vertical">
                         <div class="field">
                             <label>JWT Secret</label>
                             <div class="copy-field">
                                 <input type="text"
                                        name="jwtSecret"
                                        value="{{ index .Profile.Env "JWT_SECRET" }}"
-                                       placeholder="Set app JWT secret">
+                                placeholder="Set app JWT secret">
                                 <button type="button" class="copy-btn" onclick="copyField(this)">Copy</button>
                             </div>
                         </div>
 
                         <div class="field">
-                            <label>FLUMIO_ENC_KEY_V0</label>
+                            <label>Encryption key</label>
                             <div class="copy-field">
                                 <input type="text"
                                        name="flumioEncKeyV0"
                                        value="{{ index .Profile.Env "FLUMIO_ENC_KEY_V0" }}"
-                                       placeholder="Optional encryption key">
+                                placeholder="Optional encryption key">
                                 <button type="button" class="copy-btn" onclick="copyField(this)">Copy</button>
                             </div>
                         </div>
@@ -165,6 +175,7 @@
 </div>
 
 <style>
+
     :root {
         --primary-glow: #2dd798;
         --bg-dark: #0a0a0c;
@@ -287,6 +298,13 @@
     .input-row {
         display: flex;
         gap: 24px;
+    }
+
+    .input-vertical
+    {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
     }
 
     .copy-field {
@@ -500,6 +518,7 @@
     .advanced-content {
         padding: 0 18px 2px;
         border-top: 1px solid var(--border-color);
+        padding-top: 1.5rem;
     }
 
     .submit-note {
