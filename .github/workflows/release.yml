@@ -76,7 +76,9 @@ jobs:
       - name: Build Windows installer
         shell: powershell
         run: |
-          iscc /DAppVersion=$env:APP_VERSION /DAppExeName=KimmioLauncher.exe /DSourceDir="dist\\windows\\Kimmio Launcher" /DOutputDir=dist scripts\\windows-installer.iss
+          $sourceDir = Join-Path $env:GITHUB_WORKSPACE "dist\\windows\\Kimmio Launcher"
+          $outputDir = Join-Path $env:GITHUB_WORKSPACE "dist"
+          iscc "/DAppVersion=$env:APP_VERSION" "/DAppExeName=KimmioLauncher.exe" "/DSourceDir=$sourceDir" "/DOutputDir=$outputDir" (Join-Path $env:GITHUB_WORKSPACE "scripts\\windows-installer.iss")
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
