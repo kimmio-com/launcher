@@ -1,0 +1,172 @@
+{{ define "docker-disabled" }}
+<div class="engine-warning">
+    <div class="engine-warning-head">
+        <div class="engine-warning-icon">
+            <img src="/static/docker.svg" alt="Docker">
+        </div>
+        <div class="engine-warning-copy">
+            <span class="engine-warning-tag">Engine Offline</span>
+            <h2>Docker Engine Is Not Running</h2>
+            <p>Kimmio needs Docker to start containers. Open Docker Desktop, wait for it to become active, then retry.</p>
+        </div>
+    </div>
+
+    <div class="engine-warning-steps">
+        <span><strong>1.</strong> Start Docker Desktop</span>
+        <span><strong>2.</strong> Wait until Docker shows “Running”</span>
+        <span><strong>3.</strong> Click Retry below</span>
+    </div>
+
+    <div class="engine-warning-actions">
+        <a class="engine-btn engine-btn-link" href="https://docs.docker.com/desktop/" target="_blank" rel="noopener noreferrer">
+            <i class="fa-solid fa-book"></i>
+            <span>Docker Docs</span>
+        </a>
+        <button class="engine-btn engine-btn-primary" onclick="location.reload()">
+            <i class="fa-solid fa-rotate-right"></i>
+            <span>Retry Detection</span>
+        </button>
+    </div>
+</div>
+
+<style>
+    .engine-warning {
+        position: relative;
+        border-radius: 14px;
+        border: 1px solid rgba(245, 185, 74, 0.34);
+        background:
+                radial-gradient(circle at 90% 12%, rgba(245, 185, 74, 0.11), transparent 42%),
+                linear-gradient(180deg, rgba(245, 185, 74, 0.06), rgba(245, 185, 74, 0.02));
+        padding: 18px;
+        overflow: hidden;
+    }
+
+    .engine-warning-head {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+    }
+
+    .engine-warning-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        border: 1px solid rgba(245, 185, 74, 0.38);
+        background: rgba(245, 185, 74, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .engine-warning-icon img {
+        width: 24px;
+        height: 24px;
+        filter: grayscale(1) brightness(1.85);
+        opacity: 0.75;
+    }
+
+    .engine-warning-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .engine-warning-tag {
+        align-self: flex-start;
+        padding: 3px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(245, 185, 74, 0.4);
+        background: rgba(245, 185, 74, 0.12);
+        color: #f5c56a;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.65px;
+        text-transform: uppercase;
+    }
+
+    .engine-warning-copy h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -0.2px;
+    }
+
+    .engine-warning-copy p {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #d7d7de;
+        max-width: 560px;
+    }
+
+    .engine-warning-steps {
+        margin-top: 14px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .engine-warning-steps span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 9px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        background: rgba(255, 255, 255, 0.025);
+        color: #dddde4;
+        font-size: 12px;
+    }
+
+    .engine-warning-steps strong {
+        color: #f5b94a;
+    }
+
+    .engine-warning-actions {
+        margin-top: 14px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .engine-btn {
+        height: 38px;
+        padding: 0 12px;
+        border-radius: 9px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.45px;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: 0.2s ease;
+    }
+
+    .engine-btn-link {
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.03);
+        color: #d8d8df;
+    }
+
+    .engine-btn-link:hover {
+        border-color: rgba(255, 255, 255, 0.34);
+        color: #fff;
+    }
+
+    .engine-btn-primary {
+        border: 1px solid rgba(245, 185, 74, 0.55);
+        background: linear-gradient(180deg, rgba(245, 185, 74, 0.3), rgba(245, 185, 74, 0.16));
+        color: #fff2d3;
+    }
+
+    .engine-btn-primary:hover {
+        border-color: rgba(245, 185, 74, 0.78);
+        transform: translateY(-1px);
+    }
+</style>
+{{ end }}

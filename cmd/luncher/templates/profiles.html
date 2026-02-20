@@ -1,0 +1,805 @@
+{{ define "page:profiles.html"  }}
+    <div class="workspace-inner">
+        <header class="registry-header">
+            <div class="branding">
+                <h2 class="title-gradient">Profiles</h2>
+                <p class="subtitle">List of Kimmio instances</p>
+                <p class="profile-counter">{{ .ProfileCount }}/{{ .MaxProfiles }} profiles</p>
+            </div>
+
+            <a href="/profiles/new" class="kimmio-btn-slim {{ if ge .ProfileCount .MaxProfiles }}is-disabled{{ end }}">
+                <div class="shimmer-effect"></div>
+                <span class="btn-inner">
+        <i class="fa-solid fa-plus btn-icon"></i>
+        <span class="btn-text">Create Profile</span>
+    </span>
+            </a>
+
+        </header>
+
+        {{ if ge .ProfileCount .MaxProfiles }}
+        <div class="limit-warning" role="alert" aria-live="polite">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <div class="limit-warning-copy">
+                <strong>Profile Limit Reached</strong>
+                <span>Maximum 3 profiles reached. Delete one profile before creating a new one.</span>
+            </div>
+        </div>
+        {{ end }}
+
+        <div class="profiles-loading-banner" id="profilesLoadingBanner">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <span>Checking instance health...</span>
+        </div>
+
+        <div class="profile-vault" id="profileVault">
+            {{ $docker := .DockerRunning }}
+            {{ range .Profiles }}
+            {{ template "profile-row" . }}
+            {{ else }}
+            <div class="kimmio-empty kimmio-empty-rich">
+                <i class="fa-solid fa-cubes-stacked"></i>
+                <p>No profiles found yet.</p>
+                <span>Create your first Kimmio instance using the button above.</span>
+            </div>
+            {{ end }}
+        </div>
+
+        <div class="version-modal" id="versionModal">
+            <div class="version-modal-card">
+                <h3>Update Version</h3>
+                <p>Select preset or enter custom tag.</p>
+                <select id="versionPreset">
+                    <option value="latest">latest</option>
+                    <option value="1.0.1">1.0.1</option>
+                    <option value="1.0.0">1.0.0</option>
+                    <option value="custom">custom...</option>
+                </select>
+                <input id="versionCustom" type="text" placeholder="custom version tag"/>
+                <div class="version-modal-actions">
+                    <button type="button" class="version-btn version-btn-cancel" onclick="closeVersionModal()">Cancel</button>
+                    <button type="button" class="version-btn version-btn-apply" id="versionConfirmBtn">Apply</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="row-toast" id="rowToast"></div>
+
+    </div>
+
+<style>
+
+
+
+
+    .workspace-inner {
+        position: relative;
+        padding: 2rem;
+        z-index: 1;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: opacity 360ms ease, transform 420ms ease;
+    }
+
+    .workspace-inner.is-loaded {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .registry-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 40px;
+        opacity: 0;
+        transform: translateY(10px);
+        animation: profileEnter 520ms cubic-bezier(0.2, 0.75, 0.2, 1) forwards;
+        animation-delay: 60ms;
+    }
+
+    .title-gradient {
+        margin: 0;
+        font-size: 32px;
+        font-weight: 700;
+        background: linear-gradient(to bottom, #fff, #888);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+        color: #666;
+        font-size: 14px;
+        margin: 4px 0 0;
+    }
+
+    .profile-counter {
+        margin: 8px 0 0;
+        display: inline-flex;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.03);
+        color: #c8c8c8;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .kimmio-btn-primary {
+        position: relative;
+        text-decoration: none;
+        padding: 1px; /* Border effect */
+        background: linear-gradient(45deg, var(--kimmio-emerald), transparent);
+        border-radius: 30px;
+        overflow: hidden;
+    }
+
+    .btn-content {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #0a0a0a;
+        color: var(--kimmio-emerald);
+        padding: 10px 24px;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 700;
+        transition: 0.2s;
+    }
+
+    .kimmio-btn-primary:hover .btn-content {
+        background: transparent;
+        color: #000;
+    }
+
+
+    /* Profile List */
+    .profile-vault {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .profile-vault .profile-card,
+    .profile-vault .kimmio-empty-rich {
+        opacity: 0;
+        transform: translateY(14px) scale(0.985);
+        animation: cardEnter 560ms cubic-bezier(0.2, 0.75, 0.2, 1) forwards;
+    }
+
+    .profiles-loading-banner {
+        position: absolute;
+        top: 94px;
+        right: 2rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.03);
+        color: #a8a8af;
+        font-size: 12px;
+        font-weight: 600;
+        z-index: 20;
+        pointer-events: none;
+        box-shadow: 0 10px 20px -16px rgba(0, 0, 0, 0.6);
+        transition: opacity 0.2s ease;
+    }
+
+    .profiles-loading-banner.hidden {
+        opacity: 0;
+    }
+
+    .kimmio-empty-rich {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        text-align: center;
+        border: 1px dashed rgba(255, 255, 255, 0.16);
+        border-radius: 16px;
+        padding: 26px 18px;
+        color: #b9b9bf;
+    }
+
+    .kimmio-empty-rich i {
+        font-size: 18px;
+        color: rgba(45, 215, 152, 0.9);
+    }
+
+    .kimmio-empty-rich p {
+        margin: 0;
+        font-weight: 700;
+    }
+
+    .kimmio-empty-rich span {
+        font-size: 12px;
+        color: #909097;
+    }
+
+    .limit-warning {
+        margin-bottom: 12px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 11px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(245, 185, 74, 0.45);
+        background: linear-gradient(180deg, rgba(245, 185, 74, 0.16), rgba(245, 185, 74, 0.07));
+        color: #f8d18a;
+    }
+
+    .limit-warning i {
+        margin-top: 2px;
+        color: #f5b94a;
+    }
+
+    .limit-warning-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .limit-warning-copy strong {
+        font-size: 12px;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+    }
+
+    .limit-warning-copy span {
+        font-size: 12px;
+        color: #f4ddaf;
+    }
+
+    /* The Main Button Container */
+    .kimmio-btn-primary {
+        position: relative;
+        text-decoration: none;
+        display: inline-block;
+        padding: 1.5px; /* Creates the high-tech thin border */
+        background: linear-gradient(180deg, var(--kimmio-emerald) 0%, rgba(0, 255, 170, 0.2) 100%);
+        border-radius: 12px; /* Slightly more modern than a full pill */
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 0 0 0 rgba(0, 255, 170, 0);
+    }
+
+
+    /* Icon Styling inside button */
+    .btn-content svg {
+        color: var(--kimmio-emerald);
+        transition: transform 0.3s ease;
+    }
+
+    /* Hover States: The "Ignition" Effect */
+    .kimmio-btn-primary:hover {
+        transform: translateY(-2px);
+        background: var(--kimmio-emerald); /* Full border glow on hover */
+        /*box-shadow: 0 10px 25px -10px rgba(0, 255, 170, 0.5);*/
+    }
+
+    .kimmio-btn-primary:hover .btn-content {
+        background: rgba(10, 10, 10, 0.8); /* Slight transparency on hover */
+        /*color: var(--kimmio-emerald);*/
+    }
+
+    .kimmio-btn-primary:hover .btn-content svg {
+        transform: rotate(90deg) scale(1.1);
+        color: #fff;
+    }
+
+
+    .kimmio-btn-primary:hover .btn-glow {
+        opacity: 0.4;
+    }
+
+    .kimmio-btn-slim {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 40px;
+        padding: 0 16px;
+        background: linear-gradient(180deg, rgba(0, 255, 170, 0.11), rgba(0, 255, 170, 0.04));
+        border: 1px solid rgba(0, 255, 170, 0.35);
+        border-radius: 10px;
+        text-decoration: none;
+        overflow: hidden;
+        transition: all 0.2s ease;
+    }
+
+    .btn-inner {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #e9fffa;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+    }
+
+    .btn-icon {
+        font-size: 11px;
+        color: #2dd798;
+        transition: transform 0.2s ease;
+    }
+
+    /* The Interaction Animation: The Sweep */
+    .shimmer-effect {
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        /*background: linear-gradient(*/
+        /*        90deg,*/
+        /*        transparent,*/
+        /*        rgba(0, 255, 170, 0.1),*/
+        /*        transparent*/
+        /*);*/
+        transition: 0.5s;
+        z-index: 1;
+    }
+
+    /* Hover States */
+    .kimmio-btn-slim:hover {
+        border-color: rgba(0, 255, 170, 0.65);
+        transform: translateY(-1px);
+    }
+
+    .kimmio-btn-slim:hover .shimmer-effect {
+        left: 100%;
+    }
+
+    .kimmio-btn-slim:hover .btn-text {
+        color: #2dd798;
+    }
+
+    .kimmio-btn-slim:hover .btn-icon {
+        transform: scale(1.12);
+    }
+
+
+    /* Active/Click State */
+    .kimmio-btn-slim:active {
+        transform: scale(0.97);
+    }
+
+    .kimmio-btn-slim.is-disabled {
+        pointer-events: none;
+        opacity: 0.45;
+    }
+
+    .profile-card.is-busy {
+        opacity: 0.86;
+    }
+
+    .js-profile-action.is-loading {
+        pointer-events: none;
+    }
+
+    .js-profile-action.is-loading i {
+        color: inherit !important;
+    }
+
+    .version-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 500;
+    }
+
+    .version-modal.open {
+        display: flex;
+    }
+
+    .version-modal-card {
+        width: min(420px, 92vw);
+        background: #0f1012;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 14px;
+        padding: 18px;
+    }
+
+    .version-modal-card h3 {
+        margin: 0 0 6px;
+        font-size: 18px;
+    }
+
+    .version-modal-card p {
+        margin: 0 0 12px;
+        color: #a4a4aa;
+        font-size: 13px;
+    }
+
+    .version-modal-card select,
+    .version-modal-card input {
+        width: 100%;
+        margin-bottom: 10px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        color: #fff;
+        padding: 10px 12px;
+    }
+
+    .version-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .version-btn {
+        height: 36px;
+        padding: 0 14px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.03);
+        color: #ddd;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .version-btn-apply {
+        border-color: rgba(45, 215, 152, 0.5);
+        color: #2dd798;
+    }
+
+    .row-toast {
+        position: fixed;
+        right: 24px;
+        bottom: 24px;
+        background: #111316;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #fff;
+        border-radius: 10px;
+        padding: 10px 12px;
+        display: none;
+        z-index: 600;
+        max-width: 360px;
+        font-size: 13px;
+    }
+
+    .row-toast.show {
+        display: block;
+    }
+
+    @keyframes profileEnter {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes cardEnter {
+        from {
+            opacity: 0;
+            transform: translateY(14px) scale(0.985);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .workspace-inner,
+        .registry-header,
+        .profile-vault .profile-card,
+        .profile-vault .kimmio-empty-rich {
+            animation: none !important;
+            transition: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+        }
+    }
+
+
+
+</style>
+<script>
+    let pendingVersion = null;
+    let knownVersions = ["latest", "1.0.1", "1.0.0"];
+
+    function withCsrfRequest(init) {
+        const apply = window.withCsrf || ((payload) => payload || {});
+        return apply(init);
+    }
+
+    function openProfile(id, port) {
+        if (!port) {
+            showToast("Profile port is missing");
+            return;
+        }
+        window.open(`http://localhost:${port}`, "_blank");
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById("rowToast");
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 2600);
+    }
+
+    function setRowFeedback(id, text, isError = false) {
+        const box = document.querySelector(`[data-feedback="${id}"]`);
+        if (!box) return;
+        let line = box.querySelector(".feedback-line");
+        if (!line) {
+            line = document.createElement("div");
+            line.className = "feedback-line";
+            box.prepend(line);
+        }
+        line.textContent = text;
+        line.style.color = isError ? "#ff7f96" : "#d2d2d5";
+    }
+
+    function openVersionModal(id, currentVersion, btn) {
+        pendingVersion = {id, btn, currentVersion: currentVersion || "latest"};
+        const modal = document.getElementById("versionModal");
+        const preset = document.getElementById("versionPreset");
+        const custom = document.getElementById("versionCustom");
+        renderVersionOptions(preset, pendingVersion.currentVersion);
+        preset.value = knownVersions.includes(pendingVersion.currentVersion)
+            ? pendingVersion.currentVersion
+            : "custom";
+        custom.value = preset.value === "custom" ? pendingVersion.currentVersion : "";
+        modal.classList.add("open");
+    }
+
+    function closeVersionModal() {
+        pendingVersion = null;
+        document.getElementById("versionModal").classList.remove("open");
+    }
+
+    function readSelectedVersion() {
+        const preset = document.getElementById("versionPreset").value;
+        const custom = document.getElementById("versionCustom").value.trim();
+        return preset === "custom" ? custom : preset;
+    }
+
+    function isValidVersionTag(v) {
+        return /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(v);
+    }
+
+    async function loadKnownVersions() {
+        try {
+            const response = await fetch("/api/kimmio/versions");
+            if (!response.ok) return;
+            const payload = await response.json();
+            if (Array.isArray(payload.versions) && payload.versions.length > 0) {
+                knownVersions = payload.versions;
+            }
+        } catch (_) {
+            // ignore; fallback tags remain
+        }
+    }
+
+    function renderVersionOptions(selectEl, current) {
+        if (!selectEl) return;
+        const unique = new Set(knownVersions);
+        if (current && current !== "custom") unique.add(current);
+        const tags = Array.from(unique);
+        selectEl.innerHTML = "";
+        tags.forEach((tag) => {
+            const opt = document.createElement("option");
+            opt.value = tag;
+            opt.textContent = tag;
+            selectEl.appendChild(opt);
+        });
+        const custom = document.createElement("option");
+        custom.value = "custom";
+        custom.textContent = "custom...";
+        selectEl.appendChild(custom);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const workspace = document.querySelector(".workspace-inner");
+        if (workspace) {
+            requestAnimationFrame(() => workspace.classList.add("is-loaded"));
+        }
+
+        const loadingBanner = document.getElementById("profilesLoadingBanner");
+        const cards = Array.from(document.querySelectorAll(".profile-vault .profile-card, .profile-vault .kimmio-empty-rich"));
+        cards.forEach((el, index) => {
+            el.style.animationDelay = `${120 + index * 70}ms`;
+        });
+        setTimeout(() => {
+            if (loadingBanner) loadingBanner.classList.add("hidden");
+        }, 700);
+
+        const preset = document.getElementById("versionPreset");
+        const custom = document.getElementById("versionCustom");
+        const confirmBtn = document.getElementById("versionConfirmBtn");
+        loadKnownVersions().then(() => renderVersionOptions(preset, "latest"));
+        if (preset) {
+            preset.addEventListener("change", () => {
+                custom.style.display = preset.value === "custom" ? "block" : "none";
+            });
+            custom.style.display = preset.value === "custom" ? "block" : "none";
+        }
+        if (confirmBtn) {
+            confirmBtn.addEventListener("click", async () => {
+                if (!pendingVersion) return;
+                const version = readSelectedVersion();
+                if (!version) {
+                    showToast("Version is required");
+                    return;
+                }
+                if (!isValidVersionTag(version)) {
+                    showToast("Invalid version tag");
+                    return;
+                }
+                const {id, btn} = pendingVersion;
+                closeVersionModal();
+                await startActionJob(
+                    id,
+                    btn,
+                    "Updating",
+                    `/api/profiles/${encodeURIComponent(id)}/version`,
+                    {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({version})
+                    }
+                );
+            });
+        }
+    });
+
+    function setRowBusy(id, busy) {
+        const row = document.querySelector(`.profile-card[data-profile-id="${id}"]`);
+        if (!row) return;
+        row.classList.toggle("is-busy", busy);
+        row.querySelectorAll("button").forEach((btn) => {
+            btn.disabled = busy;
+        });
+    }
+
+    function setButtonLoading(btn, loadingLabel, isLoading) {
+        if (!btn) return;
+        if (isLoading) {
+            if (!btn.dataset.originalHtml) {
+                btn.dataset.originalHtml = btn.innerHTML;
+            }
+            btn.classList.add("is-loading");
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>${loadingLabel}...</span>`;
+            return;
+        }
+        if (btn.dataset.originalHtml) {
+            btn.innerHTML = btn.dataset.originalHtml;
+            delete btn.dataset.originalHtml;
+        }
+        btn.classList.remove("is-loading");
+    }
+
+    async function pollJob(id, jobId, btn) {
+        const started = Date.now();
+        while (Date.now() - started < 180000) {
+            const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`);
+            if (!res.ok) {
+                throw new Error("Failed to check action status");
+            }
+            const payload = await res.json();
+            const job = payload.job || {};
+            if (btn) {
+                setButtonLoading(btn, job.message || "Processing", true);
+            }
+            if (job.message) {
+                const stepPrefix = job.step ? `[${job.step}] ` : "";
+                setRowFeedback(id, `${stepPrefix}${job.message}`);
+            }
+            if (job.status === "succeeded") {
+                return job;
+            }
+            if (job.status === "failed" || job.status === "timeout" || job.status === "rolled_back") {
+                throw new Error(job.error || job.message || "Action failed");
+            }
+            await new Promise((resolve) => setTimeout(resolve, 900));
+        }
+        throw new Error("Action timeout while waiting for completion");
+    }
+
+    async function startActionJob(id, btn, loadingLabel, url, fetchInit) {
+        setRowBusy(id, true);
+        setButtonLoading(btn, loadingLabel, true);
+        try {
+            const response = await fetch(url, withCsrfRequest(fetchInit));
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || "Action request failed");
+            }
+            const payload = await response.json();
+            const jobId = payload.jobId;
+            if (!jobId) {
+                throw new Error("Missing job id");
+            }
+            const job = await pollJob(id, jobId, btn);
+            setRowFeedback(id, job.message || "Completed");
+            window.location.reload();
+        } catch (err) {
+            const msg = err?.message || "Action failed";
+            setRowFeedback(id, msg, true);
+            showToast(msg);
+        } finally {
+            setButtonLoading(btn, loadingLabel, false);
+            setRowBusy(id, false);
+        }
+    }
+
+    async function updateProfileVersion(id, currentVersion, btn) {
+        openVersionModal(id, currentVersion, btn);
+    }
+
+    async function enableProfile(id, btn) {
+        await startActionJob(id, btn, "Enabling", `/api/profiles/${encodeURIComponent(id)}/enable`, {method: "POST"});
+    }
+
+    async function stopProfile(id, btn) {
+        await startActionJob(id, btn, "Stopping", `/api/profiles/${encodeURIComponent(id)}/stop`, {method: "POST"});
+    }
+
+    async function recreateProfile(id, btn) {
+        if (!confirm(`Recreate profile "${id}"?\n\nThis is destructive and will delete profile volumes/data.`)) {
+            return;
+        }
+        await startActionJob(id, btn, "Recreating", `/api/profiles/${encodeURIComponent(id)}/recreate`, {method: "POST"});
+    }
+
+    async function retryEnable(id, btn) {
+        await enableProfile(id, btn);
+    }
+
+    async function retryVersion(id, requestedVersion, btn) {
+        const version = (requestedVersion || "").trim();
+        if (!version) {
+            showToast("No previous version request to retry");
+            return;
+        }
+        await startActionJob(
+            id,
+            btn,
+            "Retrying",
+            `/api/profiles/${encodeURIComponent(id)}/version`,
+            {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({version})
+            }
+        );
+    }
+
+    async function regenerateSecrets(id, btn) {
+        if (!confirm(`Regenerate secrets for "${id}"?\\n\\nThis invalidates existing sessions/tokens.`)) {
+            return;
+        }
+        await startActionJob(
+            id,
+            btn,
+            "Regenerating",
+            `/api/profiles/${encodeURIComponent(id)}/regenerate-secrets`,
+            {method: "POST"}
+        );
+    }
+
+    async function deleteProfile(id, btn) {
+        if (!confirm(`Delete profile "${id}"?`)) {
+            return;
+        }
+        await startActionJob(id, btn, "Deleting", `/api/profiles/${encodeURIComponent(id)}`, {method: "DELETE"});
+    }
+</script>
+{{ end }}

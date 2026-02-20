@@ -1,0 +1,172 @@
+{{ define "docker-disclaimer" }}
+<div class="engine-missing">
+    <div class="engine-missing-head">
+        <div class="engine-missing-icon">
+            <img src="/static/docker.svg" alt="Docker">
+        </div>
+        <div class="engine-missing-copy">
+            <span class="engine-missing-tag">Docker Not Installed</span>
+            <h2>Install Docker Desktop To Continue</h2>
+            <p>Kimmio requires Docker to run profile containers. Install Docker Desktop first, then reopen or retry launcher detection.</p>
+        </div>
+    </div>
+
+    <div class="engine-missing-steps">
+        <span><strong>1.</strong> Download Docker Desktop</span>
+        <span><strong>2.</strong> Install and launch it</span>
+        <span><strong>3.</strong> Return and retry</span>
+    </div>
+
+    <div class="engine-missing-actions">
+        <a class="engine-missing-btn engine-missing-btn-primary" href="https://www.docker.com/products/docker-desktop/" target="_blank" rel="noopener noreferrer">
+            <i class="fa-solid fa-download"></i>
+            <span>Install Docker</span>
+        </a>
+        <button class="engine-missing-btn engine-missing-btn-secondary" onclick="location.reload()">
+            <i class="fa-solid fa-rotate-right"></i>
+            <span>Retry Detection</span>
+        </button>
+    </div>
+</div>
+
+<style>
+    .engine-missing {
+        position: relative;
+        border-radius: 14px;
+        border: 1px solid rgba(82, 164, 255, 0.32);
+        background:
+                radial-gradient(circle at 92% 12%, rgba(82, 164, 255, 0.14), transparent 42%),
+                linear-gradient(180deg, rgba(82, 164, 255, 0.07), rgba(82, 164, 255, 0.025));
+        padding: 18px;
+        overflow: hidden;
+    }
+
+    .engine-missing-head {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+    }
+
+    .engine-missing-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        border: 1px solid rgba(82, 164, 255, 0.35);
+        background: rgba(82, 164, 255, 0.11);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .engine-missing-icon img {
+        width: 24px;
+        height: 24px;
+        filter: grayscale(1) brightness(1.9);
+        opacity: 0.78;
+    }
+
+    .engine-missing-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .engine-missing-tag {
+        align-self: flex-start;
+        padding: 3px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(82, 164, 255, 0.45);
+        background: rgba(82, 164, 255, 0.14);
+        color: #9ec6ff;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.65px;
+        text-transform: uppercase;
+    }
+
+    .engine-missing-copy h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -0.2px;
+    }
+
+    .engine-missing-copy p {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #d6deea;
+        max-width: 560px;
+    }
+
+    .engine-missing-steps {
+        margin-top: 14px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .engine-missing-steps span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 9px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        background: rgba(255, 255, 255, 0.025);
+        color: #d7dfea;
+        font-size: 12px;
+    }
+
+    .engine-missing-steps strong {
+        color: #82b6ff;
+    }
+
+    .engine-missing-actions {
+        margin-top: 14px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .engine-missing-btn {
+        height: 38px;
+        padding: 0 12px;
+        border-radius: 9px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.45px;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: 0.2s ease;
+    }
+
+    .engine-missing-btn-primary {
+        border: 1px solid rgba(82, 164, 255, 0.62);
+        background: linear-gradient(180deg, rgba(82, 164, 255, 0.28), rgba(82, 164, 255, 0.12));
+        color: #e6f1ff;
+    }
+
+    .engine-missing-btn-primary:hover {
+        border-color: rgba(82, 164, 255, 0.84);
+        transform: translateY(-1px);
+    }
+
+    .engine-missing-btn-secondary {
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.03);
+        color: #d8ddea;
+    }
+
+    .engine-missing-btn-secondary:hover {
+        border-color: rgba(255, 255, 255, 0.34);
+        color: #fff;
+    }
+</style>
+{{ end }}
