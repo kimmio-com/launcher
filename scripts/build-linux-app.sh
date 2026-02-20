@@ -94,7 +94,7 @@ Type=Application
 Name=$APP_NAME
 Exec=$BIN_NAME
 Icon=AppIcon
-Terminal=false
+Terminal=true
 Categories=Utility;
 EOF
 cp "$DESKTOP_FILE" "$APPDIR/usr/share/applications/${BIN_NAME}.desktop"
@@ -166,7 +166,7 @@ Type=Application
 Name=$APP_NAME
 Exec=/opt/kimmio-launcher/kimmio-launcher
 Icon=kimmio-launcher
-Terminal=false
+Terminal=true
 Categories=Utility;
 EOF
 
@@ -204,7 +204,7 @@ Type=Application
 Name=$APP_NAME
 Exec=/opt/kimmio-launcher/kimmio-launcher
 Icon=kimmio-launcher
-Terminal=false
+Terminal=true
 Categories=Utility;
 EOF
 

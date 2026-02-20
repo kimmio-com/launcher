@@ -5,6 +5,7 @@ APP_NAME="${APP_NAME:-Kimmio Launcher}"
 BUNDLE_ID="${BUNDLE_ID:-com.kimmio.launcher}"
 VERSION="${VERSION:-}"
 BIN_NAME="${BIN_NAME:-launcher}"
+APP_EXEC_NAME="${APP_EXEC_NAME:-launcher-app}"
 TARGET_ARCH="${TARGET_ARCH:-arm64}"
 OUT_DIR="${OUT_DIR:-dist}"
 ICON_PNG="${ICON_PNG:-}"
@@ -59,6 +60,30 @@ echo "Building macOS binary..."
 )
 chmod +x "$MACOS_DIR/$BIN_NAME"
 
+cat > "$MACOS_DIR/$APP_EXEC_NAME" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+HERE="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+BIN_PATH="\$HERE/$BIN_NAME"
+
+# If already in a terminal, run directly.
+if [ -t 1 ]; then
+  exec "\$BIN_PATH" "\$@"
+fi
+
+# Finder/icon launch: open Terminal and run backend there.
+osascript - "\$BIN_PATH" <<'OSA'
+on run argv
+  set targetCmd to quoted form of item 1 of argv
+  tell application "Terminal"
+    activate
+    do script targetCmd
+  end tell
+end run
+OSA
+EOF
+chmod +x "$MACOS_DIR/$APP_EXEC_NAME"
+
 if [[ -n "$ICON_PNG" ]]; then
   if [[ ! -f "$ICON_PNG" ]]; then
     echo "ICON_PNG not found: $ICON_PNG"
@@ -99,7 +124,7 @@ cat > "$PLIST_PATH" <<PLIST
   <key>CFBundleIdentifier</key><string>${BUNDLE_ID}</string>
   <key>CFBundleVersion</key><string>${VERSION}</string>
   <key>CFBundleShortVersionString</key><string>${VERSION}</string>
-  <key>CFBundleExecutable</key><string>${BIN_NAME}</string>
+  <key>CFBundleExecutable</key><string>${APP_EXEC_NAME}</string>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
 PLIST
 

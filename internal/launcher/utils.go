@@ -1,11 +1,13 @@
 package launcher
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -53,7 +55,7 @@ func IsDockerRunning() string {
 		return "not-installed"
 	}
 
-	cmd := exec.Command(dockerBin, "info")
+	cmd := dockerCommand(dockerBin, "info")
 	if err := cmd.Run(); err != nil {
 		return "disabled"
 	}
@@ -118,4 +120,39 @@ func openBrowser(port int) {
 		"url":    url,
 		"errors": strings.Join(failures, " | "),
 	})
+}
+
+func dockerCommand(dockerBin string, args ...string) *exec.Cmd {
+	cmd := exec.Command(dockerBin, args...)
+	cmd.Env = dockerCommandEnv()
+	return cmd
+}
+
+func dockerCommandWithContext(ctx context.Context, dockerBin string, args ...string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, dockerBin, args...)
+	cmd.Env = dockerCommandEnv()
+	return cmd
+}
+
+func dockerCommandEnv() []string {
+	env := os.Environ()
+	if strings.TrimSpace(os.Getenv("DOCKER_HOST")) != "" {
+		return env
+	}
+	// Desktop/icon launches may miss shell-initialized DOCKER_HOST for rootless Docker.
+	xdgRuntime := strings.TrimSpace(os.Getenv("XDG_RUNTIME_DIR"))
+	if xdgRuntime != "" {
+		sock := filepath.Join(xdgRuntime, "docker.sock")
+		if info, err := os.Stat(sock); err == nil && !info.IsDir() {
+			return append(env, "DOCKER_HOST=unix://"+sock)
+		}
+	}
+	uid := strings.TrimSpace(os.Getenv("UID"))
+	if uid != "" {
+		sock := filepath.Join("/run/user", uid, "docker.sock")
+		if info, err := os.Stat(sock); err == nil && !info.IsDir() {
+			return append(env, "DOCKER_HOST=unix://"+sock)
+		}
+	}
+	return env
 }
