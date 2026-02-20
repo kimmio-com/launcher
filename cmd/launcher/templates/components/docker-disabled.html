@@ -17,6 +17,11 @@
         <span><strong>3.</strong> Click Retry below</span>
     </div>
 
+    <div class="engine-warning-tip">
+        <strong>If you see this message but Docker is running:</strong>
+        <span>open this app with <code>sudo kimmio-launcher</code></span>
+    </div>
+
     <div class="engine-warning-actions">
         <a class="engine-btn engine-btn-link" href="https://docs.docker.com/desktop/" target="_blank" rel="noopener noreferrer">
             <i class="fa-solid fa-book"></i>
@@ -129,6 +134,35 @@
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
+    }
+
+    .engine-warning-tip {
+        margin-top: 12px;
+        padding: 10px 11px;
+        border-radius: 9px;
+        border: 1px solid rgba(255, 185, 107, 0.28);
+        background: rgba(255, 185, 107, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 12px;
+        color: #ffe7c9;
+    }
+
+    .engine-warning-tip strong {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.45px;
+        color: #ffd7a1;
+    }
+
+    .engine-warning-tip code {
+        padding: 2px 6px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(0, 0, 0, 0.28);
+        color: #fff8ea;
+        font-size: 11px;
     }
 
     .engine-btn {

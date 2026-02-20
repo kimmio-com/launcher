@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -289,7 +288,7 @@ func runProfileComposeUp(ctx context.Context, profile ProfileRequest, onProgress
 	notify("up", "Starting containers", 60)
 	var lastErr error
 	for attempt := 1; attempt <= 3; attempt++ {
-		cmd := exec.CommandContext(ctx, dockerBin, "compose", "-p", project, "-f", "compose.yaml", "up", "-d", "--build")
+		cmd := dockerCommandWithContext(ctx, dockerBin, "compose", "-p", project, "-f", "compose.yaml", "up", "-d", "--build")
 		cmd.Dir = composeDir
 		out, err := cmd.CombinedOutput()
 		if err == nil {
@@ -353,7 +352,7 @@ func runProfileComposeDown(ctx context.Context, id string, removeVolumes bool) e
 	if err != nil {
 		return err
 	}
-	cmd := exec.CommandContext(ctx, dockerBin, args...)
+	cmd := dockerCommandWithContext(ctx, dockerBin, args...)
 	cmd.Dir = composeDir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -376,7 +375,7 @@ func pullImageWithRetry(ctx context.Context, dockerBin, image string, attempts i
 			"attempt": attempt,
 			"total":   attempts,
 		})
-		cmd := exec.CommandContext(ctx, dockerBin, "pull", image)
+		cmd := dockerCommandWithContext(ctx, dockerBin, "pull", image)
 		out, err := cmd.CombinedOutput()
 		if err == nil {
 			logInfo("docker_pull_succeeded", map[string]any{
