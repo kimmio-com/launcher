@@ -220,12 +220,12 @@ jobs:
           tag_name: ${{ needs.prepare.outputs.tag_name }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
+          fail_on_unmatched_files: false
           files: |
-            dist/**/*.zip
-            dist/**/*.tar.gz
-            dist/**/*.AppImage
-            dist/**/*.exe
-            dist/**/*.app/**
-            dist/binaries/**
+            dist/*.zip
+            dist/*.tar.gz
+            dist/*.AppImage
+            dist/Kimmio-Launcher-Setup-windows-amd64.exe
+            dist/binaries/luncher-*
             dist/map.json
             dist/checksums.txt
