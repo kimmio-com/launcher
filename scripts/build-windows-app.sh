@@ -20,6 +20,7 @@ VERSION="${VERSION:-}"
 OUT_DIR="${OUT_DIR:-dist}"
 ICON_ICO="${ICON_ICO:-}"
 GIT_COMMIT="${GIT_COMMIT:-}"
+BUILD_WINDOWS_INSTALLER="${BUILD_WINDOWS_INSTALLER:-0}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -135,9 +136,9 @@ if [[ -f "$ROOT_DIR/$ZIP_NAME" ]]; then
   echo "Zip package: $ROOT_DIR/$ZIP_NAME"
 fi
 
-if command -v iscc >/dev/null 2>&1; then
+if [[ "$BUILD_WINDOWS_INSTALLER" == "1" ]] && command -v iscc >/dev/null 2>&1; then
   echo "Building Windows installer (Inno Setup)..."
-  iscc /DAppVersion="$VERSION" /DAppExeName="$EXE_NAME" /DSourceDir="$PKG_DIR" /DOutputDir="$OUT_DIR" "$SCRIPT_DIR/windows-installer.iss"
+  iscc "/DAppVersion=$VERSION" "/DAppExeName=$EXE_NAME" "/DSourceDir=$PKG_DIR" "/DOutputDir=$OUT_DIR" "$SCRIPT_DIR/windows-installer.iss"
   if [[ -f "$ROOT_DIR/$OUT_DIR/Kimmio-Launcher-Setup-windows-amd64.exe" ]]; then
     echo "Installer: $ROOT_DIR/$OUT_DIR/Kimmio-Launcher-Setup-windows-amd64.exe"
   fi
