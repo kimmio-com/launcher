@@ -1,5 +1,3 @@
-cd ../
-
 $(go env GOPATH)/bin/reflex \
   -r '\.(go|html|css|js)$' \
   -s \
