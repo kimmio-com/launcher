@@ -60,6 +60,9 @@ DESKTOP_FILE="$APPDIR/${BIN_NAME}.desktop"
 APPIMAGE_PATH="$ROOT_DIR/$OUT_DIR/${SAFE_NAME}-${VERSION}-linux-amd64.AppImage"
 TAR_PATH="$ROOT_DIR/$OUT_DIR/${SAFE_NAME}-${VERSION}-linux-amd64.tar.gz"
 DEB_PATH="$ROOT_DIR/$OUT_DIR/${SAFE_NAME}-${VERSION}-linux-amd64.deb"
+ARM64_BIN_PATH="$ROOT_DIR/$OUT_DIR/linux/${BIN_NAME}-linux-arm64"
+ARM64_TAR_PATH="$ROOT_DIR/$OUT_DIR/${SAFE_NAME}-${VERSION}-linux-arm64.tar.gz"
+ARM64_DEB_PATH="$ROOT_DIR/$OUT_DIR/${SAFE_NAME}-${VERSION}-linux-arm64.deb"
 
 rm -rf "$APPDIR"
 mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/512x512/apps"
@@ -70,6 +73,13 @@ echo "Building Linux binary..."
   CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w -X main.buildMode=prod -X main.appVersion=$VERSION -X main.gitCommit=$GIT_COMMIT" -o "$BIN_PATH" ./cmd/launcher
 )
 chmod +x "$BIN_PATH"
+
+echo "Building Linux ARM64 binary..."
+(
+  cd "$ROOT_DIR"
+  CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w -X main.buildMode=prod -X main.appVersion=$VERSION -X main.gitCommit=$GIT_COMMIT" -o "$ARM64_BIN_PATH" ./cmd/launcher
+)
+chmod +x "$ARM64_BIN_PATH"
 
 cat > "$APPDIR/AppRun" <<EOF
 #!/usr/bin/env bash
@@ -118,6 +128,29 @@ else
   echo "Archive: $TAR_PATH"
 fi
 
+echo "Creating ARM64 tar.gz package..."
+ARM64_STAGE="$ROOT_DIR/$OUT_DIR/linux/arm64-package"
+rm -rf "$ARM64_STAGE"
+mkdir -p "$ARM64_STAGE"
+cp "$ARM64_BIN_PATH" "$ARM64_STAGE/kimmio-launcher"
+chmod 0755 "$ARM64_STAGE/kimmio-launcher"
+if [[ -n "$LICENSE_FILE" ]]; then
+  cp "$LICENSE_FILE" "$ARM64_STAGE/LICENSE.txt"
+fi
+cat > "$ARM64_STAGE/README.txt" <<EOF
+$APP_NAME (Linux ARM64)
+Version: $VERSION
+
+Run:
+  chmod +x ./kimmio-launcher
+  ./kimmio-launcher
+EOF
+(
+  cd "$ARM64_STAGE"
+  tar -czf "$ARM64_TAR_PATH" .
+)
+echo "ARM64 archive: $ARM64_TAR_PATH"
+
 if command -v dpkg-deb >/dev/null 2>&1; then
   echo "Creating .deb installer..."
   DEB_ROOT="$ROOT_DIR/$OUT_DIR/linux/deb-root"
@@ -156,6 +189,44 @@ EOF
 
   dpkg-deb --build "$DEB_ROOT" "$DEB_PATH" >/dev/null
   echo "Debian package: $DEB_PATH"
+
+  echo "Creating ARM64 .deb installer..."
+  DEB_ROOT_ARM64="$ROOT_DIR/$OUT_DIR/linux/deb-root-arm64"
+  rm -rf "$DEB_ROOT_ARM64"
+  mkdir -p "$DEB_ROOT_ARM64/DEBIAN" "$DEB_ROOT_ARM64/opt/kimmio-launcher" "$DEB_ROOT_ARM64/usr/share/applications" "$DEB_ROOT_ARM64/usr/share/icons/hicolor/512x512/apps" "$DEB_ROOT_ARM64/usr/bin"
+
+  cp "$ARM64_BIN_PATH" "$DEB_ROOT_ARM64/opt/kimmio-launcher/kimmio-launcher"
+  chmod 0755 "$DEB_ROOT_ARM64/opt/kimmio-launcher/kimmio-launcher"
+
+  cat > "$DEB_ROOT_ARM64/usr/share/applications/kimmio-launcher.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$APP_NAME
+Exec=/opt/kimmio-launcher/kimmio-launcher
+Icon=kimmio-launcher
+Terminal=false
+Categories=Utility;
+EOF
+
+  if [[ -n "$ICON_PNG" && -f "$ICON_PNG" ]]; then
+    cp "$ICON_PNG" "$DEB_ROOT_ARM64/usr/share/icons/hicolor/512x512/apps/kimmio-launcher.png"
+  fi
+
+  ln -sf /opt/kimmio-launcher/kimmio-launcher "$DEB_ROOT_ARM64/usr/bin/kimmio-launcher"
+
+  cat > "$DEB_ROOT_ARM64/DEBIAN/control" <<EOF
+Package: kimmio-launcher
+Version: $VERSION
+Section: utils
+Priority: optional
+Architecture: arm64
+Maintainer: Kimmio <support@kimmio.app>
+Description: Kimmio Launcher desktop app
+ Launcher for managing local Docker-based Kimmio profiles.
+EOF
+
+  dpkg-deb --build "$DEB_ROOT_ARM64" "$ARM64_DEB_PATH" >/dev/null
+  echo "ARM64 Debian package: $ARM64_DEB_PATH"
 else
   echo "dpkg-deb not found; skipping .deb package."
 fi

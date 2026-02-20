@@ -27,6 +27,7 @@ type ProfileRequest struct {
 	LastActionAt         string            `json:"lastActionAt,omitempty"`
 	LastRequestedVersion string            `json:"lastRequestedVersion,omitempty"`
 	ActionLog            []string          `json:"actionLog,omitempty"`
+	ActiveJobID          string            `json:"-"`
 }
 
 type PortMapping struct {

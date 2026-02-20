@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -21,22 +22,39 @@ type ActionJob struct {
 	FinishedAt string   `json:"finishedAt,omitempty"`
 }
 
-func (s *Server) handleJobStatus(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+func (s *Server) handleJobRoute(w http.ResponseWriter, r *http.Request) {
+	trimmed := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/jobs/"), "/")
+	if trimmed == "" {
+		http.NotFound(w, r)
 		return
 	}
-	jobID := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/jobs/"))
+	parts := strings.Split(trimmed, "/")
+	jobID := strings.TrimSpace(parts[0])
 	if jobID == "" {
 		http.NotFound(w, r)
 		return
 	}
+	if len(parts) == 1 && r.Method == http.MethodGet {
+		s.handleJobStatus(w, r, jobID)
+		return
+	}
+	if len(parts) == 2 && parts[1] == "cancel" && r.Method == http.MethodPost {
+		if err := s.cancelJob(jobID); err != nil {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "canceled": true})
+		return
+	}
+	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+}
 
+func (s *Server) handleJobStatus(w http.ResponseWriter, _ *http.Request, jobID string) {
 	s.jobMu.Lock()
 	job, ok := s.jobs[jobID]
 	if !ok {
 		s.jobMu.Unlock()
-		http.NotFound(w, r)
+		http.Error(w, "Job not found", http.StatusNotFound)
 		return
 	}
 	copyJob := *job
@@ -49,7 +67,33 @@ func (s *Server) handleJobStatus(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) enqueueProfileJob(profileID, action string, run func(jobID string) error) (*ActionJob, error) {
+func (s *Server) cancelJob(jobID string) error {
+	s.jobMu.Lock()
+	job, ok := s.jobs[jobID]
+	if !ok {
+		s.jobMu.Unlock()
+		return errors.New("job not found")
+	}
+	if job.Status == "succeeded" || job.Status == "failed" || job.Status == "timeout" || job.Status == "rolled_back" || job.Status == "canceled" {
+		s.jobMu.Unlock()
+		return errors.New("job already completed")
+	}
+	cancel := s.jobCancels[jobID]
+	job.Step = "cancel"
+	job.Status = "running"
+	job.Message = "Cancellation requested"
+	job.Logs = append(job.Logs, time.Now().UTC().Format(time.RFC3339)+" [cancel] Cancellation requested")
+	if len(job.Logs) > 100 {
+		job.Logs = job.Logs[len(job.Logs)-100:]
+	}
+	s.jobMu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+	return nil
+}
+
+func (s *Server) enqueueProfileJob(profileID, action string, run func(jobID string, ctx context.Context) error) (*ActionJob, error) {
 	s.jobMu.Lock()
 	if existingJobID, busy := s.activeProfiles[profileID]; busy {
 		s.jobMu.Unlock()
@@ -66,16 +110,20 @@ func (s *Server) enqueueProfileJob(profileID, action string, run func(jobID stri
 		Progress:  0,
 		Logs:      []string{},
 	}
+	ctx, cancel := context.WithCancel(context.Background())
 	s.jobs[jobID] = job
 	s.activeProfiles[profileID] = jobID
+	s.jobCancels[jobID] = cancel
 	s.jobMu.Unlock()
 
 	go func() {
 		s.updateJobStep(jobID, "prepare", "running", "Preparing action", 5, "")
-		err := run(jobID)
+		err := run(jobID, ctx)
 		if err != nil {
 			errText := err.Error()
-			if strings.Contains(strings.ToLower(errText), "deadline exceeded") || strings.Contains(strings.ToLower(errText), "timeout") {
+			if errors.Is(err, context.Canceled) {
+				s.updateJobStep(jobID, "cancel", "canceled", "Canceled", 100, "operation canceled by user")
+			} else if strings.Contains(strings.ToLower(errText), "deadline exceeded") || strings.Contains(strings.ToLower(errText), "timeout") {
 				s.updateJobStep(jobID, "cleanup", "timeout", "Timed out", 100, errText)
 			} else {
 				s.updateJobStep(jobID, "cleanup", "failed", "Failed", 100, errText)
@@ -86,6 +134,7 @@ func (s *Server) enqueueProfileJob(profileID, action string, run func(jobID stri
 
 		s.jobMu.Lock()
 		delete(s.activeProfiles, profileID)
+		delete(s.jobCancels, jobID)
 		s.jobMu.Unlock()
 	}()
 
@@ -103,7 +152,7 @@ func (s *Server) updateJob(jobID, status, message string, progress int, errText 
 	if status == "running" && job.StartedAt == "" {
 		job.StartedAt = now
 	}
-	if status == "succeeded" || status == "failed" || status == "timeout" || status == "rolled_back" {
+	if status == "succeeded" || status == "failed" || status == "timeout" || status == "rolled_back" || status == "canceled" {
 		job.FinishedAt = now
 	}
 	job.Status = status
@@ -129,7 +178,7 @@ func (s *Server) updateJobStep(jobID, step, status, message string, progress int
 	if status == "running" && job.StartedAt == "" {
 		job.StartedAt = now
 	}
-	if status == "succeeded" || status == "failed" || status == "timeout" || status == "rolled_back" {
+	if status == "succeeded" || status == "failed" || status == "timeout" || status == "rolled_back" || status == "canceled" {
 		job.FinishedAt = now
 	}
 	job.Step = step

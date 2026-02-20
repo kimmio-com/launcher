@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -209,9 +210,9 @@ func (s *Server) handleProfileAction(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		job, err := s.enqueueProfileJob(id, "delete", func(jobID string) error {
+		job, err := s.enqueueProfileJob(id, "delete", func(jobID string, ctx context.Context) error {
 			s.updateJobStep(jobID, "down", "running", "Stopping profile", 20, "")
-			return s.performDelete(id, jobID)
+			return s.performDelete(id, jobID, ctx)
 		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusConflict)
@@ -229,8 +230,8 @@ func (s *Server) handleProfileAction(w http.ResponseWriter, r *http.Request) {
 	action := strings.ToLower(strings.TrimSpace(parts[1]))
 	switch action {
 	case "enable":
-		job, err := s.enqueueProfileJob(id, action, func(jobID string) error {
-			return s.performEnable(id, jobID)
+		job, err := s.enqueueProfileJob(id, action, func(jobID string, ctx context.Context) error {
+			return s.performEnable(id, jobID, ctx)
 		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusConflict)
@@ -239,8 +240,8 @@ func (s *Server) handleProfileAction(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "jobId": job.ID})
 		return
 	case "stop":
-		job, err := s.enqueueProfileJob(id, action, func(jobID string) error {
-			return s.performStop(id, jobID)
+		job, err := s.enqueueProfileJob(id, action, func(jobID string, ctx context.Context) error {
+			return s.performStop(id, jobID, ctx)
 		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusConflict)
@@ -249,8 +250,8 @@ func (s *Server) handleProfileAction(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "jobId": job.ID})
 		return
 	case "recreate":
-		job, err := s.enqueueProfileJob(id, action, func(jobID string) error {
-			return s.performRecreate(id, jobID)
+		job, err := s.enqueueProfileJob(id, action, func(jobID string, ctx context.Context) error {
+			return s.performRecreate(id, jobID, ctx)
 		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusConflict)
@@ -264,8 +265,8 @@ func (s *Server) handleProfileAction(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Version update failed: "+err.Error(), http.StatusBadRequest)
 			return
 		}
-		job, err := s.enqueueProfileJob(id, action, func(jobID string) error {
-			return s.performVersionUpdate(id, newVersion, jobID)
+		job, err := s.enqueueProfileJob(id, action, func(jobID string, ctx context.Context) error {
+			return s.performVersionUpdate(id, newVersion, jobID, ctx)
 		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusConflict)
@@ -274,8 +275,8 @@ func (s *Server) handleProfileAction(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "jobId": job.ID})
 		return
 	case "regenerate-secrets":
-		job, err := s.enqueueProfileJob(id, action, func(jobID string) error {
-			return s.performRegenerateSecrets(id, jobID)
+		job, err := s.enqueueProfileJob(id, action, func(jobID string, ctx context.Context) error {
+			return s.performRegenerateSecrets(id, jobID, ctx)
 		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusConflict)

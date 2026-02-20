@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"context"
 	"launcher/internal/config"
 	"testing"
 	"time"
@@ -12,7 +13,7 @@ func TestEnqueueProfileJobLocksByProfile(t *testing.T) {
 	srv := NewServer(cfg)
 	done := make(chan struct{})
 
-	job1, err := srv.enqueueProfileJob("kimmio-default", "enable", func(jobID string) error {
+	job1, err := srv.enqueueProfileJob("kimmio-default", "enable", func(jobID string, _ context.Context) error {
 		<-done
 		return nil
 	})
@@ -23,7 +24,7 @@ func TestEnqueueProfileJobLocksByProfile(t *testing.T) {
 		t.Fatalf("expected first job with id")
 	}
 
-	_, err = srv.enqueueProfileJob("kimmio-default", "stop", func(jobID string) error {
+	_, err = srv.enqueueProfileJob("kimmio-default", "stop", func(jobID string, _ context.Context) error {
 		return nil
 	})
 	if err == nil {

@@ -129,6 +129,10 @@ linux_deb_name="Kimmio-Launcher-${VERSION}-linux-amd64.deb"
 if [[ -f "$DIST_DIR/$linux_deb_name" ]]; then
   add_entry "linux/amd64" "installer" "$linux_deb_name" "$linux_deb_name" "true"
 fi
+linux_arm64_deb_name="Kimmio-Launcher-${VERSION}-linux-arm64.deb"
+if [[ -f "$DIST_DIR/$linux_arm64_deb_name" ]]; then
+  add_entry "linux/arm64" "installer" "$linux_arm64_deb_name" "$linux_arm64_deb_name" "true"
+fi
 linux_archive_name="Kimmio-Launcher-${VERSION}-linux-amd64.tar.gz"
 if [[ -f "$DIST_DIR/$linux_archive_name" ]]; then
   linux_archive_recommended="false"
@@ -136,6 +140,14 @@ if [[ -f "$DIST_DIR/$linux_archive_name" ]]; then
     linux_archive_recommended="true"
   fi
   add_entry "linux/amd64" "archive" "$linux_archive_name" "$linux_archive_name" "$linux_archive_recommended"
+fi
+linux_arm64_archive_name="Kimmio-Launcher-${VERSION}-linux-arm64.tar.gz"
+if [[ -f "$DIST_DIR/$linux_arm64_archive_name" ]]; then
+  linux_arm64_archive_recommended="false"
+  if [[ ! -f "$DIST_DIR/$linux_arm64_deb_name" ]]; then
+    linux_arm64_archive_recommended="true"
+  fi
+  add_entry "linux/arm64" "archive" "$linux_arm64_archive_name" "$linux_arm64_archive_name" "$linux_arm64_archive_recommended"
 fi
 linux_appimage_name="Kimmio-Launcher-${VERSION}-linux-amd64.AppImage"
 if [[ -f "$DIST_DIR/$linux_appimage_name" ]]; then
@@ -158,7 +170,11 @@ for bin in "$BIN_DIR"/${APP_NAME}-*; do
   os="${os_arch%-*}"
   arch="${os_arch##*-}"
   if [[ -n "$os" && -n "$arch" && "$os" != "$os_arch" ]]; then
-    add_entry "$os/$arch" "binary" "$base" "$rel"
+    recommended="false"
+    if [[ "$os/$arch" == "linux/arm64" ]]; then
+      recommended="false"
+    fi
+    add_entry "$os/$arch" "binary" "$base" "$rel" "$recommended"
   fi
 done
 shopt -u nullglob
