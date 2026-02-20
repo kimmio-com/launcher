@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
 BIN_DIR="$DIST_DIR/binaries"
-APP_NAME="${APP_NAME:-luncher}"
+APP_NAME="${APP_NAME:-kimmio-launcher}"
 CLEAN_DIST="${CLEAN_DIST:-1}"
 LICENSE_FILE=""
 VERSION="${VERSION:-}"
@@ -39,7 +39,11 @@ fi
 mkdir -p "$DIST_DIR" "$BIN_DIR"
 
 echo "Building desktop packages..."
-"$SCRIPT_DIR/build-macos-app.sh"
+for mac_arch in arm64 amd64; do
+  TARGET_ARCH="$mac_arch" "$SCRIPT_DIR/build-macos-app.sh"
+  TARGET_ARCH="$mac_arch" "$SCRIPT_DIR/build-macos-dmg.sh"
+done
+rm -rf "$DIST_DIR/Kimmio Launcher.app"
 "$SCRIPT_DIR/build-linux-app.sh"
 "$SCRIPT_DIR/build-windows-app.sh"
 
@@ -68,7 +72,7 @@ for target in "${TARGETS[@]}"; do
     cd "$ROOT_DIR"
     LDFLAGS="-s -w -X main.appVersion=$VERSION -X main.gitCommit=$GIT_COMMIT"
     CGO_ENABLED=0 GOOS="$GOOS" GOARCH="$GOARCH" \
-      go build -trimpath -ldflags="$LDFLAGS" -o "$OUT_PATH" ./cmd/luncher
+      go build -trimpath -ldflags="$LDFLAGS" -o "$OUT_PATH" ./cmd/launcher
   ); then
     echo "   FAILED: $GOOS/$GOARCH"
     FAILURES=$((FAILURES + 1))
@@ -107,11 +111,13 @@ add_entry() {
   entries+=("{\"platform\":\"$(json_escape "$platform")\",\"type\":\"$(json_escape "$artifact_type")\",\"name\":\"$(json_escape "$name")\",\"path\":\"$(json_escape "$rel_path")\",\"recommended\":${recommended}}")
 }
 
-if [[ -d "$DIST_DIR/Kimmio Launcher.app" ]]; then
-  add_entry "darwin/arm64" "desktop-app" "Kimmio Launcher.app" "Kimmio Launcher.app" "true"
+macos_dmg_arm64="Kimmio-Launcher-${VERSION}-macos-arm64.dmg"
+if [[ -f "$DIST_DIR/$macos_dmg_arm64" ]]; then
+  add_entry "darwin/arm64" "dmg" "$macos_dmg_arm64" "$macos_dmg_arm64" "true"
 fi
-if [[ -d "$DIST_DIR/Kimmio Launcher Dock.app" ]]; then
-  add_entry "darwin/arm64" "desktop-app" "Kimmio Launcher Dock.app" "Kimmio Launcher Dock.app"
+macos_dmg_amd64="Kimmio-Launcher-${VERSION}-macos-amd64.dmg"
+if [[ -f "$DIST_DIR/$macos_dmg_amd64" ]]; then
+  add_entry "darwin/amd64" "dmg" "$macos_dmg_amd64" "$macos_dmg_amd64" "true"
 fi
 if [[ -f "$DIST_DIR/Kimmio-Launcher-windows-amd64.zip" ]]; then
   add_entry "windows/amd64" "archive" "Kimmio-Launcher-windows-amd64.zip" "Kimmio-Launcher-windows-amd64.zip"
@@ -126,10 +132,6 @@ fi
 linux_appimage_name="Kimmio-Launcher-${VERSION}-linux-amd64.AppImage"
 if [[ -f "$DIST_DIR/$linux_appimage_name" ]]; then
   add_entry "linux/amd64" "appimage" "$linux_appimage_name" "$linux_appimage_name" "true"
-fi
-
-if [[ -f "$DIST_DIR/windows/Kimmio Launcher/KimmioLauncher.exe" ]]; then
-  add_entry "windows/amd64" "installer-binary" "KimmioLauncher.exe" "windows/Kimmio Launcher/KimmioLauncher.exe"
 fi
 
 shopt -s nullglob

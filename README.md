@@ -5,7 +5,7 @@ Kimmio Launcher is a local Go app for creating and managing Docker-based Kimmio 
 ## Run
 
 ```bash
-go run ./cmd/luncher
+go run ./cmd/launcher
 ```
 
 Open `http://localhost:7331` (or the fallback port written to `data/launcher-port`).

@@ -214,6 +214,52 @@ jobs:
             printf "%s  %s\n" "$sum" "$rel" >> dist/checksums.txt
           done
 
+      - name: Build release upload file list
+        id: release_files
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          manifest_path = "dist/map.json"
+          if not os.path.exists(manifest_path):
+              print(f"Missing manifest: {manifest_path}", file=sys.stderr)
+              sys.exit(1)
+
+          with open(manifest_path, "r", encoding="utf-8") as f:
+              data = json.load(f)
+
+          files = set()
+          for artifact in data.get("artifacts", []):
+              rel = artifact.get("path")
+              if not rel or not isinstance(rel, str):
+                  continue
+              candidate = os.path.normpath(os.path.join("dist", rel))
+              if not candidate.startswith("dist" + os.sep) and candidate != "dist":
+                  continue
+              if os.path.isfile(candidate):
+                  files.add(candidate)
+
+          for extra in ("dist/map.json", "dist/checksums.txt"):
+              if os.path.isfile(extra):
+                  files.add(extra)
+
+          selected = sorted(files)
+          if not selected:
+              print("No files selected for release upload", file=sys.stderr)
+              sys.exit(1)
+
+          with open("dist/release-files.txt", "w", encoding="utf-8") as out:
+              out.write("\n".join(selected) + "\n")
+          PY
+
+          {
+            echo "files<<EOF"
+            cat dist/release-files.txt
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub release and upload assets
         uses: softprops/action-gh-release@v2
         with:
@@ -221,11 +267,4 @@ jobs:
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
           fail_on_unmatched_files: false
-          files: |
-            dist/*.zip
-            dist/*.tar.gz
-            dist/*.AppImage
-            dist/Kimmio-Launcher-Setup-windows-amd64.exe
-            dist/binaries/luncher-*
-            dist/map.json
-            dist/checksums.txt
+          files: ${{ steps.release_files.outputs.files }}

@@ -62,7 +62,7 @@ mkdir -p "$ROOT_DIR/$PKG_DIR"
 echo "Building Windows binary..."
 (
   cd "$ROOT_DIR"
-  CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w -X main.appVersion=$VERSION -X main.gitCommit=$GIT_COMMIT" -o "$BIN_PATH" ./cmd/luncher
+  CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w -X main.appVersion=$VERSION -X main.gitCommit=$GIT_COMMIT" -o "$BIN_PATH" ./cmd/launcher
 )
 
 if [[ -n "$ICON_ICO" ]]; then
@@ -73,8 +73,8 @@ if [[ -n "$ICON_ICO" ]]; then
   cp "$ICON_ICO" "$ROOT_DIR/$PKG_DIR/AppIcon.ico"
 elif [[ -f "$APPICONS_DIR/sizes/256.png" ]] && command -v magick >/dev/null 2>&1; then
   magick "$APPICONS_DIR/sizes/256.png" "$ROOT_DIR/$PKG_DIR/AppIcon.ico"
-elif [[ -f "$ROOT_DIR/cmd/luncher/static/favicon.ico" ]]; then
-  cp "$ROOT_DIR/cmd/luncher/static/favicon.ico" "$ROOT_DIR/$PKG_DIR/AppIcon.ico"
+elif [[ -f "$ROOT_DIR/cmd/launcher/static/favicon.ico" ]]; then
+  cp "$ROOT_DIR/cmd/launcher/static/favicon.ico" "$ROOT_DIR/$PKG_DIR/AppIcon.ico"
 fi
 
 cat > "$ROOT_DIR/$PKG_DIR/README.txt" <<EOF

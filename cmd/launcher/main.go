@@ -4,8 +4,8 @@ import (
 	"embed"
 	"log"
 
-	"luncher/internal/config"
-	"luncher/internal/launcher"
+	"launcher/internal/config"
+	"launcher/internal/launcher"
 )
 
 var buildMode = "dev"
