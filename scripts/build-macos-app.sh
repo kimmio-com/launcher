@@ -4,11 +4,11 @@ set -euo pipefail
 APP_NAME="${APP_NAME:-Kimmio Launcher}"
 BUNDLE_ID="${BUNDLE_ID:-com.kimmio.launcher}"
 VERSION="${VERSION:-}"
-BIN_NAME="${BIN_NAME:-luncher}"
+BIN_NAME="${BIN_NAME:-launcher}"
+TARGET_ARCH="${TARGET_ARCH:-arm64}"
 OUT_DIR="${OUT_DIR:-dist}"
 ICON_PNG="${ICON_PNG:-}"
 SHOW_DOCK_ICON="${SHOW_DOCK_ICON:-1}"
-BUILD_DOCK_LAUNCHER="${BUILD_DOCK_LAUNCHER:-1}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -55,7 +55,7 @@ mkdir -p "$ROOT_DIR/$OUT_DIR" "$MACOS_DIR" "$RES_DIR"
 echo "Building macOS binary..."
 (
   cd "$ROOT_DIR"
-  CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="-s -w -X main.buildMode=prod -X main.appVersion=$VERSION -X main.gitCommit=$GIT_COMMIT" -o "$MACOS_DIR/$BIN_NAME" ./cmd/luncher
+  CGO_ENABLED=0 GOOS=darwin GOARCH="$TARGET_ARCH" go build -trimpath -ldflags="-s -w -X main.buildMode=prod -X main.appVersion=$VERSION -X main.gitCommit=$GIT_COMMIT" -o "$MACOS_DIR/$BIN_NAME" ./cmd/launcher
 )
 chmod +x "$MACOS_DIR/$BIN_NAME"
 
@@ -128,10 +128,6 @@ if [[ -n "$LICENSE_FILE" ]]; then
   cp "$LICENSE_FILE" "$RES_DIR/LICENSE.txt"
 else
   echo "Warning: no license file found in project root; skipping license copy for macOS app."
-fi
-
-if [[ "$BUILD_DOCK_LAUNCHER" == "1" && -x "$SCRIPT_DIR/build-macos-dock-launcher.sh" ]]; then
-  APP_NAME="$APP_NAME" OUT_DIR="$OUT_DIR" BACKEND_BIN_NAME="$BIN_NAME" "$SCRIPT_DIR/build-macos-dock-launcher.sh"
 fi
 
 echo "Done: $APP_DIR"

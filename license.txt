@@ -1,6 +1,6 @@
-# MIT License (Kimmio Luncher Only)
+# MIT License (Kimmio Launcher Only)
 
-This MIT License applies **only** to the software project named **“Kimmio Luncher”** (the “Software”).
+This MIT License applies **only** to the software project named **“Kimmio Launcher”** (the “Software”).
 It does **not** apply to any other projects, products, or repositories unless they explicitly include this license text.
 
 ---

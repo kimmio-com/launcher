@@ -3,7 +3,7 @@ package launcher
 import (
 	"bytes"
 	"encoding/json"
-	"luncher/internal/config"
+	"launcher/internal/config"
 	"net"
 	"net/http"
 	"os"

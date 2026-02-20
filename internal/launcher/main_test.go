@@ -1,7 +1,7 @@
 package launcher
 
 import (
-	"luncher/internal/config"
+	"launcher/internal/config"
 	"net"
 	"strconv"
 	"testing"

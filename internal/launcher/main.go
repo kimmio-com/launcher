@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"luncher/internal/config"
+	"launcher/internal/config"
 )
 
 type Server struct {
