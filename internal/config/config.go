@@ -15,6 +15,7 @@ type Config struct {
 	PortSearchRange int
 	MaxProfiles     int
 	ActionTimeout   time.Duration
+	EnableTimeout   time.Duration
 	ProfilePortMin  int
 	ProfilePortMax  int
 }
@@ -26,6 +27,7 @@ func Load(buildMode string) Config {
 		PortSearchRange: envInt("KIMMIO_PORT_SEARCH_RANGE", 100),
 		MaxProfiles:     envInt("KIMMIO_MAX_PROFILES", 3),
 		ActionTimeout:   envDuration("KIMMIO_ACTION_TIMEOUT", 2*time.Minute),
+		EnableTimeout:   envDuration("KIMMIO_ENABLE_TIMEOUT", 20*time.Minute),
 		ProfilePortMin:  envInt("KIMMIO_PROFILE_PORT_MIN", 8080),
 		ProfilePortMax:  envInt("KIMMIO_PROFILE_PORT_MAX", 9000),
 	}
@@ -41,6 +43,9 @@ func Load(buildMode string) Config {
 	}
 	if cfg.ProfilePortMax <= cfg.ProfilePortMin {
 		cfg.ProfilePortMax = cfg.ProfilePortMin + 1000
+	}
+	if cfg.EnableTimeout < cfg.ActionTimeout {
+		cfg.EnableTimeout = cfg.ActionTimeout
 	}
 	return cfg
 }

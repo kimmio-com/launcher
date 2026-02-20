@@ -2,6 +2,7 @@ package launcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,8 +12,16 @@ import (
 	"time"
 )
 
+type composeProgressFn func(step, message string, progress int)
+
 func (s *Server) performEnable(id, jobID string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), appCfg.ActionTimeout)
+	firstInstall := isFirstProfileInstall(id)
+	actionTimeout := appCfg.EnableTimeout
+	if actionTimeout < appCfg.ActionTimeout {
+		actionTimeout = appCfg.ActionTimeout
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), actionTimeout)
 	defer cancel()
 
 	store, idx, err := s.getProfileForAction(id)
@@ -20,8 +29,32 @@ func (s *Server) performEnable(id, jobID string) error {
 		return err
 	}
 	profile := store.Profiles[idx]
-	s.updateJobStep(jobID, "up", "running", "Starting compose stack (non-destructive)", 35, "")
-	if err := runProfileComposeUp(ctx, profile); err != nil {
+
+	logInfo("profile_enable_started", map[string]any{
+		"profile_id":    id,
+		"first_install": firstInstall,
+		"timeout_sec":   int(actionTimeout.Seconds()),
+		"version":       strings.TrimSpace(profile.Version),
+	})
+
+	if firstInstall {
+		s.updateJobStep(jobID, "install", "running", "First-time setup detected. Installation can take up to 10 minutes.", 10, "")
+	} else {
+		s.updateJobStep(jobID, "up", "running", "Starting compose stack (non-destructive)", 30, "")
+	}
+
+	progress := func(step, message string, percent int) {
+		s.updateJobStep(jobID, step, "running", message, percent, "")
+		logInfo("profile_enable_progress", map[string]any{
+			"profile_id": id,
+			"step":       step,
+			"progress":   percent,
+			"message":    message,
+		})
+	}
+
+	if err := runProfileComposeUp(ctx, profile, progress); err != nil {
+		logError("profile_enable_failed", map[string]any{"profile_id": id, "error": err.Error()})
 		_ = s.markProfileResult(id, "enable", "failed", err.Error(), "")
 		return err
 	}
@@ -31,9 +64,11 @@ func (s *Server) performEnable(id, jobID string) error {
 	}
 	s.updateJobStep(jobID, "health", "running", "Waiting for health", 85, "")
 	if ok := waitForProfileHealth(profile, 6, 2*time.Second); !ok {
+		logWarn("profile_enable_health_pending", map[string]any{"profile_id": id})
 		_ = s.markProfileResult(id, "enable", "warning", "Instance did not become healthy yet", startingUntil)
 		return nil
 	}
+	logInfo("profile_enable_succeeded", map[string]any{"profile_id": id})
 	return s.markProfileResult(id, "enable", "success", "Instance is healthy", "")
 }
 
@@ -65,7 +100,9 @@ func (s *Server) performRecreate(id, jobID string) error {
 		return err
 	}
 	s.updateJobStep(jobID, "up", "running", "Starting fresh stack", 60, "")
-	if err := runProfileComposeUp(ctx, profile); err != nil {
+	if err := runProfileComposeUp(ctx, profile, func(step, message string, progress int) {
+		s.updateJobStep(jobID, step, "running", message, progress, "")
+	}); err != nil {
 		_ = s.markProfileResult(id, "recreate", "failed", err.Error(), "")
 		return err
 	}
@@ -157,9 +194,9 @@ func (s *Server) performVersionUpdate(id, newVersion, jobID string) error {
 	s.updateJobStep(jobID, "up", "running", "Rebuilding with new version", 45, "")
 	newProfile := oldProfile
 	newProfile.Version = newVersion
-	if err := runProfileComposeUp(ctx, newProfile); err != nil {
+	if err := runProfileComposeUp(ctx, newProfile, nil); err != nil {
 		s.updateJobStep(jobID, "cleanup", "running", "Rolling back to previous version", 75, "")
-		rollbackErr := runProfileComposeUp(ctx, oldProfile)
+		rollbackErr := runProfileComposeUp(ctx, oldProfile, nil)
 		_ = s.restoreVersion(id, oldVersion, rollbackErr == nil)
 		if rollbackErr != nil {
 			return fmt.Errorf("update failed: %v; rollback failed: %v", err, rollbackErr)
@@ -193,14 +230,21 @@ func (s *Server) performRegenerateSecrets(id, jobID string) error {
 	}
 
 	s.updateJobStep(jobID, "up", "running", "Applying regenerated secrets", 50, "")
-	if err := runProfileComposeUp(ctx, profile); err != nil {
+	if err := runProfileComposeUp(ctx, profile, nil); err != nil {
 		_ = s.markProfileResult(id, "regenerate-secrets", "failed", err.Error(), "")
 		return err
 	}
 	return s.markProfileResult(id, "regenerate-secrets", "success", "Secrets regenerated and applied", "")
 }
 
-func runProfileComposeUp(ctx context.Context, profile ProfileRequest) error {
+func runProfileComposeUp(ctx context.Context, profile ProfileRequest, onProgress composeProgressFn) error {
+	notify := func(step, message string, progress int) {
+		if onProgress != nil {
+			onProgress(step, message, progress)
+		}
+	}
+
+	notify("prepare", "Preparing compose files", 18)
 	composeDir := profileComposeDir(profile.ID)
 	if err := os.MkdirAll(composeDir, 0o755); err != nil {
 		return err
@@ -225,22 +269,37 @@ func runProfileComposeUp(ctx context.Context, profile ProfileRequest) error {
 	if strings.TrimSpace(profile.Version) == "" {
 		image = "kimmio/kimmio-app:latest"
 	}
-	if err := pullImageWithRetry(ctx, dockerBin, image, 3); err != nil {
+	notify("pull", "Pulling Docker image "+image+" (can take several minutes)", 30)
+	if err := pullImageWithRetry(ctx, dockerBin, image, 3, func(attempt, attempts int) {
+		if attempts <= 1 {
+			notify("pull", "Pulling Docker image "+image, 30)
+			return
+		}
+		notify("pull", fmt.Sprintf("Pulling Docker image %s (attempt %d/%d)", image, attempt, attempts), 30+(attempt-1)*5)
+	}); err != nil {
 		return err
 	}
 
+	notify("up", "Starting containers", 60)
 	var lastErr error
 	for attempt := 1; attempt <= 3; attempt++ {
 		cmd := exec.CommandContext(ctx, dockerBin, "compose", "-p", project, "-f", "compose.yaml", "up", "-d", "--build")
 		cmd.Dir = composeDir
 		out, err := cmd.CombinedOutput()
 		if err == nil {
+			logInfo("compose_up_succeeded", map[string]any{
+				"profile_id": profile.ID,
+				"attempt":    attempt,
+				"project":    project,
+			})
 			if attempt > 1 {
 				logInfo("compose_up_retry_succeeded", map[string]any{"profile_id": profile.ID, "attempt": attempt})
 			}
+			notify("up", "Containers started; validating health", 78)
 			return nil
 		}
 		lastErr = fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
+		notify("up", fmt.Sprintf("Container startup failed (attempt %d/3), retrying", attempt), 60+attempt*5)
 		logWarn("compose_up_attempt_failed", map[string]any{
 			"profile_id": profile.ID,
 			"attempt":    attempt,
@@ -281,15 +340,27 @@ func runProfileComposeDown(ctx context.Context, id string, removeVolumes bool) e
 	return nil
 }
 
-func pullImageWithRetry(ctx context.Context, dockerBin, image string, attempts int) error {
+func pullImageWithRetry(ctx context.Context, dockerBin, image string, attempts int, onAttempt func(attempt, attempts int)) error {
 	if attempts < 1 {
 		attempts = 1
 	}
 	var lastErr error
 	for attempt := 1; attempt <= attempts; attempt++ {
+		if onAttempt != nil {
+			onAttempt(attempt, attempts)
+		}
+		logInfo("docker_pull_started", map[string]any{
+			"image":   image,
+			"attempt": attempt,
+			"total":   attempts,
+		})
 		cmd := exec.CommandContext(ctx, dockerBin, "pull", image)
 		out, err := cmd.CombinedOutput()
 		if err == nil {
+			logInfo("docker_pull_succeeded", map[string]any{
+				"image":   image,
+				"attempt": attempt,
+			})
 			return nil
 		}
 		lastErr = fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
@@ -306,6 +377,12 @@ func pullImageWithRetry(ctx context.Context, dockerBin, image string, attempts i
 		return fmt.Errorf("%s", friendlyDockerError(lastErr.Error()))
 	}
 	return fmt.Errorf("failed to pull image")
+}
+
+func isFirstProfileInstall(profileID string) bool {
+	composeFile := filepath.Join(profileComposeDir(profileID), "compose.yaml")
+	_, err := os.Stat(composeFile)
+	return errors.Is(err, os.ErrNotExist)
 }
 
 func friendlyDockerError(raw string) string {

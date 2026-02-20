@@ -687,8 +687,9 @@
     }
 
     async function pollJob(id, jobId, btn) {
+        const maxWaitMs = 25 * 60 * 1000;
         const started = Date.now();
-        while (Date.now() - started < 180000) {
+        while (Date.now() - started < maxWaitMs) {
             const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`);
             if (!res.ok) {
                 throw new Error("Failed to check action status");
@@ -700,7 +701,8 @@
             }
             if (job.message) {
                 const stepPrefix = job.step ? `[${job.step}] ` : "";
-                setRowFeedback(id, `${stepPrefix}${job.message}`);
+                const progressSuffix = typeof job.progress === "number" ? ` (${job.progress}%)` : "";
+                setRowFeedback(id, `${stepPrefix}${job.message}${progressSuffix}`);
             }
             if (job.status === "succeeded") {
                 return job;

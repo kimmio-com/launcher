@@ -69,6 +69,7 @@ func writeStructuredLog(level, msg string, fields map[string]any) {
 		fmt.Fprintf(os.Stderr, "log marshal failed: %v\n", err)
 		return
 	}
+	_, _ = os.Stdout.Write(append(b, '\n'))
 	f, err := os.OpenFile(appLogger.path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "open log file failed: %v\n", err)
