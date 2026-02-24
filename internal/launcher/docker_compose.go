@@ -222,8 +222,8 @@ func (s *Server) performRegenerateSecrets(id, jobID string, parent context.Conte
 	profile := store.Profiles[idx]
 
 	newSecrets := map[string]string{
-		"JWT_SECRET":        randomToken(48),
-		"FLUMIO_ENC_KEY_V0": randomToken(32),
+		"JWT_SECRET": randomToken(48),
+		"ENC_KEY_V0": randomBase64Key32(),
 	}
 	if err := saveProfileSecrets(id, newSecrets); err != nil {
 		_ = s.markProfileResult(id, "regenerate-secrets", "failed", err.Error(), "")
@@ -449,10 +449,10 @@ func buildComposeYAML() string {
       - minio
     environment:
       JWT_SECRET: ${JWT_SECRET}
-      FLUMIO_ENC_KEY_V0: ${FLUMIO_ENC_KEY_V0}
+      ENC_KEY_V1: ${ENC_KEY_V1}
       INSTANCE_ID: ${INSTANCE_ID}
       PORT: ${APP_PORT}
-      DOMAIN: ${APP_DOMAIN}
+      DOMAIN: ${DOMAIN}
       WEBSOCKET_PORT: ${WEBSOCKET_PORT}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
@@ -596,19 +596,29 @@ func buildComposeEnv(profile ProfileRequest) string {
 		}
 		jwtSecret = randomToken(48)
 	}
-	flumioKey := strings.TrimSpace(envValue(mergedEnv, "FLUMIO_ENC_KEY_V0", ""))
-	if len(flumioKey) != 32 {
-		if flumioKey != "" {
-			logWarn("invalid_secret_length_autoheal", map[string]any{"profile_id": profile.ID, "secret": "FLUMIO_ENC_KEY_V0", "length": len(flumioKey)})
+	encKey := strings.TrimSpace(envValue(mergedEnv, "ENC_KEY_V0", ""))
+	if encKey == "" {
+		encKey = strings.TrimSpace(envValue(mergedEnv, "FLUMIO_ENC_KEY_V0", ""))
+	}
+	normalizedEncKey, ok := normalizeEncryptionKeyValue(encKey)
+	if !ok {
+		if encKey != "" {
+			logWarn("invalid_secret_length_autoheal", map[string]any{"profile_id": profile.ID, "secret": "ENC_KEY_V0", "length": len(encKey)})
 		}
-		flumioKey = randomToken(32)
+		normalizedEncKey = randomBase64Key32()
+	}
+	appDomain := envValue(mergedEnv, "APP_DOMAIN", "localhost")
+	domainEnv := appDomain
+	if strings.EqualFold(strings.TrimSpace(appDomain), "localhost") {
+		domainEnv = "http://localhost:" + strconv.Itoa(hostPort)
 	}
 	lines := []string{
 		"JWT_SECRET=" + jwtSecret,
-		"FLUMIO_ENC_KEY_V0=" + flumioKey,
+		"ENC_KEY_V1=" + normalizedEncKey,
 		"INSTANCE_ID=" + envValue(mergedEnv, "INSTANCE_ID", profile.ID),
 		"APP_PORT=" + envValue(mergedEnv, "APP_PORT", strconv.Itoa(hostPort)),
-		"APP_DOMAIN=" + envValue(mergedEnv, "APP_DOMAIN", "localhost"),
+		"APP_DOMAIN=" + appDomain,
+		"DOMAIN=" + domainEnv,
 		"WEBSOCKET_PORT=" + envValue(mergedEnv, "WEBSOCKET_PORT", strconv.Itoa(hostPort)),
 		"KIMMIO_APP_IMAGE=kimmio/kimmio-app:" + version,
 		"POSTGRES_USER=" + envValue(mergedEnv, "POSTGRES_USER", "postgres"),

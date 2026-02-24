@@ -103,13 +103,18 @@ func openBrowser(port int) {
 	default:
 		tries = []openTry{
 			{name: "xdg-open", args: []string{url}},
+			{name: "gio", args: []string{"open", url}},
+			{name: "sensible-browser", args: []string{url}},
+			{name: "gvfs-open", args: []string{url}},
+			{name: "kde-open5", args: []string{url}},
+			{name: "kde-open", args: []string{url}},
+			{name: "gnome-open", args: []string{url}},
 		}
 	}
 
 	var failures []string
 	for _, t := range tries {
-		cmd := exec.Command(t.name, t.args...)
-		if err := cmd.Start(); err == nil {
+		if err := runOpenCommand(t.name, t.args...); err == nil {
 			logInfo("browser_opened", map[string]any{"url": url, "method": t.name})
 			return
 		} else {
@@ -120,6 +125,25 @@ func openBrowser(port int) {
 		"url":    url,
 		"errors": strings.Join(failures, " | "),
 	})
+}
+
+func runOpenCommand(name string, args ...string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, name, args...)
+	out, err := cmd.CombinedOutput()
+	if ctx.Err() == context.DeadlineExceeded {
+		return errors.New("timed out")
+	}
+	if err != nil {
+		msg := strings.TrimSpace(string(out))
+		if msg != "" {
+			return fmt.Errorf("%w (%s)", err, msg)
+		}
+		return err
+	}
+	return nil
 }
 
 func dockerCommand(dockerBin string, args ...string) *exec.Cmd {

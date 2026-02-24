@@ -244,9 +244,9 @@ func defaultProfile() ProfileRequest {
 			{Container: 3000, Host: appCfg.ProfilePortMin},
 		},
 		Env: map[string]string{
-			"APP_DOMAIN":        "localhost",
-			"JWT_SECRET":        randomToken(48),
-			"FLUMIO_ENC_KEY_V0": randomToken(32),
+			"APP_DOMAIN": "localhost",
+			"JWT_SECRET": randomToken(48),
+			"ENC_KEY_V0": randomBase64Key32(),
 		},
 	}
 	profile.Resources.Limits.Memory = ""
@@ -310,6 +310,33 @@ func randomToken(minLen int) string {
 		return token[:minLen]
 	}
 	return token
+}
+
+func randomBase64Key32() string {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		// 32 ASCII bytes -> base64 decodes back to 32 bytes.
+		return base64.StdEncoding.EncodeToString([]byte("change-this-enc-key-now-please-32b"))
+	}
+	return base64.StdEncoding.EncodeToString(buf)
+}
+
+func normalizeEncryptionKeyValue(v string) (string, bool) {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return "", false
+	}
+	if dec, err := base64.StdEncoding.DecodeString(v); err == nil && len(dec) == 32 {
+		return v, true
+	}
+	if dec, err := base64.RawStdEncoding.DecodeString(v); err == nil && len(dec) == 32 {
+		return base64.StdEncoding.EncodeToString(dec), true
+	}
+	// Backward compatibility: older launcher stored raw 32-char strings.
+	if len(v) == 32 {
+		return base64.StdEncoding.EncodeToString([]byte(v)), true
+	}
+	return "", false
 }
 
 func applyHealthStatus(profiles []ProfileRequest) []ProfileRequest {

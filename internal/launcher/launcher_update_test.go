@@ -54,3 +54,19 @@ func TestChooseLauncherAssetURL(t *testing.T) {
 		t.Fatalf("linux arm64 asset mismatch: %s", got)
 	}
 }
+
+func TestChooseLauncherAssetURLLinuxPrefersDebOverArchiveOrder(t *testing.T) {
+	release := githubRelease{
+		Assets: []struct {
+			Name               string `json:"name"`
+			BrowserDownloadURL string `json:"browser_download_url"`
+		}{
+			{Name: "Kimmio-Launcher-1.2.0-linux-arm64.tar.gz", BrowserDownloadURL: "https://example/linux-arm64.tar.gz"},
+			{Name: "Kimmio-Launcher-1.2.0-linux-arm64.deb", BrowserDownloadURL: "https://example/linux-arm64.deb"},
+		},
+	}
+
+	if got := chooseLauncherAssetURL(release, "linux", "arm64"); got != "https://example/linux-arm64.deb" {
+		t.Fatalf("linux arm64 should prefer deb over tar.gz, got %s", got)
+	}
+}

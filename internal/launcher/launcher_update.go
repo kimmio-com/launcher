@@ -104,34 +104,37 @@ func chooseLauncherAssetURL(release githubRelease, goos, goarch string) string {
 		return ""
 	}
 
-	for _, asset := range release.Assets {
-		name := strings.ToLower(strings.TrimSpace(asset.Name))
-		if name == "" || asset.BrowserDownloadURL == "" {
-			continue
+	switch goos {
+	case "windows":
+		if url := findAsset(func(name string) bool {
+			return strings.Contains(name, "setup") && strings.HasSuffix(name, ".exe")
+		}); url != "" {
+			return url
 		}
-		switch goos {
-		case "windows":
-			if strings.Contains(name, "setup") && strings.HasSuffix(name, ".exe") {
-				return asset.BrowserDownloadURL
-			}
-			if strings.HasSuffix(name, "windows-amd64.zip") {
-				return asset.BrowserDownloadURL
-			}
-		case "darwin":
-			if strings.Contains(name, "macos-"+goarch+".dmg") {
-				return asset.BrowserDownloadURL
-			}
-		case "linux":
-			archToken := "linux-" + strings.ToLower(goarch)
-			if strings.HasSuffix(name, ".deb") && strings.Contains(name, archToken) {
-				return asset.BrowserDownloadURL
-			}
-			if strings.HasSuffix(name, ".appimage") && strings.Contains(name, archToken) {
-				return asset.BrowserDownloadURL
-			}
-			if strings.Contains(name, archToken+".tar.gz") {
-				return asset.BrowserDownloadURL
-			}
+		if url := findAsset(func(name string) bool { return strings.HasSuffix(name, "windows-amd64.zip") }); url != "" {
+			return url
+		}
+	case "darwin":
+		if url := findAsset(func(name string) bool { return strings.Contains(name, "macos-"+goarch+".dmg") }); url != "" {
+			return url
+		}
+	case "linux":
+		archToken := "linux-" + strings.ToLower(goarch)
+		// Enforce packaging preference regardless of release asset order.
+		if url := findAsset(func(name string) bool {
+			return strings.HasSuffix(name, ".deb") && strings.Contains(name, archToken)
+		}); url != "" {
+			return url
+		}
+		if url := findAsset(func(name string) bool {
+			return strings.HasSuffix(name, ".appimage") && strings.Contains(name, archToken)
+		}); url != "" {
+			return url
+		}
+		if url := findAsset(func(name string) bool {
+			return strings.Contains(name, archToken+".tar.gz")
+		}); url != "" {
+			return url
 		}
 	}
 
