@@ -11,7 +11,7 @@ func splitSecretEnv(env map[string]string) (map[string]string, map[string]string
 	secretEnv := map[string]string{}
 	for k, v := range env {
 		switch k {
-		case "JWT_SECRET", "FLUMIO_ENC_KEY_V0":
+		case "JWT_SECRET", "ENC_KEY_V0", "FLUMIO_ENC_KEY_V0":
 			secretEnv[k] = v
 		default:
 			publicEnv[k] = v
@@ -60,5 +60,10 @@ func loadProfileSecrets(profileID string) map[string]string {
 			result[k] = v
 		}
 	}
+	// Migrate legacy secret key name transparently on read.
+	if strings.TrimSpace(result["ENC_KEY_V0"]) == "" && strings.TrimSpace(result["FLUMIO_ENC_KEY_V0"]) != "" {
+		result["ENC_KEY_V0"] = strings.TrimSpace(result["FLUMIO_ENC_KEY_V0"])
+	}
+	delete(result, "FLUMIO_ENC_KEY_V0")
 	return result
 }

@@ -45,13 +45,9 @@
                 <div class="field " style="width: 100%">
                     <label>Version <span class="req">*</span></label>
                     <div class="select-custom">
-                        <select name="version" style="width: 100%">
+                        <select id="profileVersionSelect" name="version" style="width: 100%" data-selected-version="{{ .Profile.Version }}">
                             <option value="latest" {{ if or (eq .Profile.Version
                             "") (eq .Profile.Version "latest") }}selected{{ end }}>Latest</option>
-                            <option value="1.0.1" {{ if eq .Profile.Version
-                            "1.0.1" }}selected{{ end }}>1.0.1</option>
-                            <option value="1.0.0" {{ if eq .Profile.Version
-                            "1.0.0" }}selected{{ end }}>1.0.0</option>
                         </select>
                     </div>
                 </div>
@@ -147,8 +143,8 @@
                             <label>Encryption key</label>
                             <div class="copy-field">
                                 <input type="text"
-                                       name="flumioEncKeyV0"
-                                       value="{{ index .Profile.Env "FLUMIO_ENC_KEY_V0" }}"
+                                       name="encKeyV0"
+                                       value="{{ index .Profile.Env "ENC_KEY_V0" }}"
                                 placeholder="Optional encryption key">
                                 <button type="button" class="copy-btn" onclick="copyField(this)">Copy</button>
                             </div>
@@ -602,7 +598,48 @@
         sections.forEach((section, index) => {
             section.style.animationDelay = `${90 + index * 70}ms`;
         });
+
+        loadKimmioVersions();
     });
+
+    async function loadKimmioVersions() {
+        const select = document.getElementById("profileVersionSelect");
+        if (!select) return;
+
+        const selectedFromServer = (select.dataset.selectedVersion || "").trim();
+        const selectedVersion = selectedFromServer || select.value || "latest";
+
+        try {
+            const response = await fetch("/api/kimmio/versions", { headers: { "Accept": "application/json" } });
+            if (!response.ok) return;
+            const data = await response.json();
+            const versions = Array.isArray(data?.versions) ? data.versions : [];
+            if (!versions.length) return;
+
+            const normalized = [];
+            const seen = new Set();
+            for (const raw of versions) {
+                const v = String(raw || "").trim();
+                if (!v || seen.has(v)) continue;
+                seen.add(v);
+                normalized.push(v);
+            }
+            if (!seen.has(selectedVersion)) {
+                normalized.unshift(selectedVersion);
+            }
+
+            select.innerHTML = "";
+            for (const version of normalized) {
+                const option = document.createElement("option");
+                option.value = version;
+                option.textContent = version === "latest" ? "Latest" : version;
+                if (version === selectedVersion) option.selected = true;
+                select.appendChild(option);
+            }
+        } catch (_) {
+            // Keep server-rendered fallback options.
+        }
+    }
 
     async function copyField(btn) {
         const wrapper = btn.closest(".copy-field");

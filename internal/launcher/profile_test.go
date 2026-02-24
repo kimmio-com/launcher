@@ -2,6 +2,7 @@ package launcher
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"launcher/internal/config"
 	"net"
@@ -13,22 +14,22 @@ import (
 
 func TestSplitSecretEnv(t *testing.T) {
 	in := map[string]string{
-		"JWT_SECRET":        "jwt",
-		"FLUMIO_ENC_KEY_V0": "enc",
-		"APP_DOMAIN":        "localhost",
+		"JWT_SECRET": "jwt",
+		"ENC_KEY_V0": "enc",
+		"APP_DOMAIN": "localhost",
 	}
 	publicEnv, secretEnv := splitSecretEnv(in)
 
 	if _, ok := publicEnv["JWT_SECRET"]; ok {
 		t.Fatalf("JWT_SECRET should not be in public env")
 	}
-	if _, ok := publicEnv["FLUMIO_ENC_KEY_V0"]; ok {
-		t.Fatalf("FLUMIO_ENC_KEY_V0 should not be in public env")
+	if _, ok := publicEnv["ENC_KEY_V0"]; ok {
+		t.Fatalf("ENC_KEY_V0 should not be in public env")
 	}
 	if publicEnv["APP_DOMAIN"] != "localhost" {
 		t.Fatalf("APP_DOMAIN should stay public")
 	}
-	if secretEnv["JWT_SECRET"] != "jwt" || secretEnv["FLUMIO_ENC_KEY_V0"] != "enc" {
+	if secretEnv["JWT_SECRET"] != "jwt" || secretEnv["ENC_KEY_V0"] != "enc" {
 		t.Fatalf("secret env values mismatch")
 	}
 }
@@ -61,9 +62,9 @@ func TestCreateProfileStoresSecretsOutsideProfilesJSON(t *testing.T) {
 		Version: "latest",
 		Ports:   []PortMapping{{Container: 3000, Host: port}},
 		Env: map[string]string{
-			"APP_DOMAIN":        "localhost",
-			"JWT_SECRET":        "jwt-secret-test",
-			"FLUMIO_ENC_KEY_V0": "enc-secret-test",
+			"APP_DOMAIN": "localhost",
+			"JWT_SECRET": "jwt-secret-test",
+			"ENC_KEY_V0": "enc-secret-test",
 		},
 	}
 
@@ -81,15 +82,15 @@ func TestCreateProfileStoresSecretsOutsideProfilesJSON(t *testing.T) {
 	if _, ok := store.Profiles[0].Env["JWT_SECRET"]; ok {
 		t.Fatalf("JWT_SECRET should not be persisted in profiles.json")
 	}
-	if _, ok := store.Profiles[0].Env["FLUMIO_ENC_KEY_V0"]; ok {
-		t.Fatalf("FLUMIO_ENC_KEY_V0 should not be persisted in profiles.json")
+	if _, ok := store.Profiles[0].Env["ENC_KEY_V0"]; ok {
+		t.Fatalf("ENC_KEY_V0 should not be persisted in profiles.json")
 	}
 
 	loadedSecrets := loadProfileSecrets(req.ID)
 	if loadedSecrets["JWT_SECRET"] != "jwt-secret-test" {
 		t.Fatalf("JWT secret not stored in secrets file")
 	}
-	if loadedSecrets["FLUMIO_ENC_KEY_V0"] != "enc-secret-test" {
+	if loadedSecrets["ENC_KEY_V0"] != "enc-secret-test" {
 		t.Fatalf("enc key not stored in secrets file")
 	}
 	if store.Profiles[0].Ports[0].Host != port {
@@ -135,12 +136,16 @@ func TestCreateProfileGeneratesSecretsWhenMissing(t *testing.T) {
 
 	loadedSecrets := loadProfileSecrets(req.ID)
 	jwt := loadedSecrets["JWT_SECRET"]
-	enc := loadedSecrets["FLUMIO_ENC_KEY_V0"]
+	enc := loadedSecrets["ENC_KEY_V0"]
 	if len(jwt) < 32 {
 		t.Fatalf("expected generated JWT_SECRET length >= 32, got %d", len(jwt))
 	}
-	if len(enc) != 32 {
-		t.Fatalf("expected generated FLUMIO_ENC_KEY_V0 length 32, got %d", len(enc))
+	decoded, err := base64.StdEncoding.DecodeString(enc)
+	if err != nil {
+		t.Fatalf("expected generated ENC_KEY_V0 to be base64: %v", err)
+	}
+	if len(decoded) != 32 {
+		t.Fatalf("expected generated ENC_KEY_V0 to decode to 32 bytes, got %d", len(decoded))
 	}
 }
 

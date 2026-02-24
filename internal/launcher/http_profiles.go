@@ -2,6 +2,7 @@ package launcher
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -95,7 +96,11 @@ func decodeProfileRequest(r *http.Request) (ProfileRequest, bool, error) {
 
 	mem := strings.TrimSpace(r.FormValue("memory"))
 	jwtSecret := strings.TrimSpace(r.FormValue("jwtSecret"))
-	flumioEncKeyV0 := strings.TrimSpace(r.FormValue("flumioEncKeyV0"))
+	encKeyV0 := strings.TrimSpace(r.FormValue("encKeyV0"))
+	if encKeyV0 == "" {
+		// Backward compatibility with older form field name.
+		encKeyV0 = strings.TrimSpace(r.FormValue("flumioEncKeyV0"))
+	}
 
 	cpusStr := strings.TrimSpace(r.FormValue("cpus"))
 	var cpus float64
@@ -114,8 +119,8 @@ func decodeProfileRequest(r *http.Request) (ProfileRequest, bool, error) {
 	if jwtSecret != "" {
 		req.Env["JWT_SECRET"] = jwtSecret
 	}
-	if flumioEncKeyV0 != "" {
-		req.Env["FLUMIO_ENC_KEY_V0"] = flumioEncKeyV0
+	if encKeyV0 != "" {
+		req.Env["ENC_KEY_V0"] = encKeyV0
 	}
 	if domain != "" {
 		req.Env["APP_DOMAIN"] = domain
@@ -161,6 +166,11 @@ func validateAndNormalize(req *ProfileRequest) error {
 	if req.Env == nil {
 		req.Env = map[string]string{}
 	}
+	// Normalize legacy key if sent by older clients/API consumers.
+	if strings.TrimSpace(req.Env["ENC_KEY_V0"]) == "" && strings.TrimSpace(req.Env["FLUMIO_ENC_KEY_V0"]) != "" {
+		req.Env["ENC_KEY_V0"] = strings.TrimSpace(req.Env["FLUMIO_ENC_KEY_V0"])
+	}
+	delete(req.Env, "FLUMIO_ENC_KEY_V0")
 	for k := range req.Env {
 		if !isSafeEnvKey(k) {
 			return fmt.Errorf("invalid env key: %q", k)
@@ -169,8 +179,8 @@ func validateAndNormalize(req *ProfileRequest) error {
 	if domain := strings.TrimSpace(req.Env["APP_DOMAIN"]); domain != "" && !isValidDomain(domain) {
 		return errors.New("domain must be hostname only (example: localhost or app.example.com)")
 	}
-	if key := strings.TrimSpace(req.Env["FLUMIO_ENC_KEY_V0"]); key != "" && len(key) != 32 {
-		return errors.New("FLUMIO_ENC_KEY_V0 must be exactly 32 characters")
+	if key := strings.TrimSpace(req.Env["ENC_KEY_V0"]); key != "" && !isValidEncryptionKeyValue(key) {
+		return errors.New("ENC_KEY_V0 must be base64 for 32 bytes (legacy 32-char keys also accepted)")
 	}
 	if jwt := strings.TrimSpace(req.Env["JWT_SECRET"]); jwt != "" && len(jwt) < 32 {
 		return errors.New("JWT_SECRET must be at least 32 characters")
@@ -188,6 +198,20 @@ func isValidMem(v string) bool {
 func isSafeEnvKey(k string) bool {
 	keyRe := regexp.MustCompile(`^[A-Z_][A-Z0-9_]{0,63}$`)
 	return keyRe.MatchString(k)
+}
+
+func isValidEncryptionKeyValue(v string) bool {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return false
+	}
+	if dec, err := base64.StdEncoding.DecodeString(v); err == nil && len(dec) == 32 {
+		return true
+	}
+	if dec, err := base64.RawStdEncoding.DecodeString(v); err == nil && len(dec) == 32 {
+		return true
+	}
+	return len(v) == 32
 }
 
 func (s *Server) handleProfileAction(w http.ResponseWriter, r *http.Request) {
