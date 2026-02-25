@@ -6,14 +6,18 @@
     <link rel="icon" href="/static/favicon.ico"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>Kimmio Launcher</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap"
           rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 
 <body>
+
+
 <div class="launcher-shell">
     <div class="launcher-window">
+
+
 
 
         {{ template "header-component" . }}
@@ -29,11 +33,9 @@
         </div>
 
 
-
         {{ else }}
         {{ template "page" . }}
         {{ end }}
-
 
 
     </div>
@@ -53,14 +55,13 @@
 
 <style>
     :root {
-        --bg-desktop: #050505; /* The "Background" behind the launcher */
-        --window-bg: #0c0c0e;
         --sub-panel: #121214;
         --border: rgba(255, 255, 255, 0.08);
         --accent: #ffffff;
         --text-main: #eeeeee;
         --text-low: white;
         --text-dim: #71717a;
+        --ui-font: 'Kumbh Sans', sans-serif;
         --mono: 'JetBrains Mono', monospace;
 
         color: var(--text-main) !important;
@@ -72,23 +73,62 @@
         -webkit-font-smoothing: antialiased;
     }
 
+    button,
+    input,
+    select,
+    textarea {
+        font: inherit;
+    }
+
     body {
         margin: 0;
-        background-color: #040406;
-        background-image:
-                radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 28%, rgba(0, 0, 0, 0) 55%),
-                radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.5) 78%, rgba(0, 0, 0, 0.78) 100%),
-                linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
-        background-size: auto, auto, 28px 28px, 28px 28px;
-        background-position: center center, center center, center center, center center;
-        font-family: 'Inter', sans-serif;
+        background-color: #090909;
+        font-family: var(--ui-font);
         display: flex;
         align-items: flex-start;
         justify-content: center;
         overflow: hidden;
         overflow-y: auto;
         min-height: 100vh;
+        position: relative;
+        isolation: isolate;
+    }
+
+
+    body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        opacity: 1;
+        background-image:
+            linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        background-size:
+            240px 240px,
+            240px 240px;
+        background-position:
+            center center,
+            center center;
+        animation: gridDrift 38s ease-in-out infinite alternate;
+        mask-image:
+            radial-gradient(circle at 50% 46%, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.92) 58%, rgba(0, 0, 0, 0.62) 82%, rgba(0, 0, 0, 0.28) 100%);
+        -webkit-mask-image:
+            radial-gradient(circle at 50% 46%, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.92) 58%, rgba(0, 0, 0, 0.62) 82%, rgba(0, 0, 0, 0.28) 100%);
+    }
+
+    @keyframes gridDrift {
+        from {
+            background-position:
+                center center,
+                center center;
+        }
+        to {
+            background-position:
+                calc(50% + 28px) calc(50% + 28px),
+                calc(50% + 28px) calc(50% + 28px);
+        }
     }
 
     .launcher-shell {
@@ -103,6 +143,7 @@
         display: flex;
         flex-direction: column;
         min-height: 650px; /* Fixed height makes it feel like a tool, not a site */
+        position: relative;
         overflow: hidden;
     }
 

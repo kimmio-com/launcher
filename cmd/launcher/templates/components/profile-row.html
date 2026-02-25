@@ -1,6 +1,6 @@
 {{ define "profile-row" }}
 <div class="profile-card" data-profile-id="{{ .ID }}" data-active-job-id="{{ .ActiveJobID }}">
-    <div class="card-glow"></div>
+
 
     <div class="card-content">
         <div class="card-header">
@@ -10,7 +10,7 @@
                     <span class="profile-version">
                         <i class="fa-solid fa-code-branch"></i>
                         <span class="version-label">Version</span>
-                        <span class="version-chip">v{{ .Version }}</span>
+                        <span class="version-chip">{{ .Version }}</span>
                     </span>
                 </div>
             </div>
@@ -92,6 +92,7 @@
             </div>
         </div>
 
+
         <div class="row-feedback" data-feedback="{{ .ID }}">
             <div class="job-progress is-hidden" data-progress="{{ .ID }}">
                 <div class="job-progress-bar" data-progress-bar="{{ .ID }}" style="width: 0%"></div>
@@ -135,39 +136,38 @@
         --card-bg: rgba(20, 20, 24, 0.8);
         --border-color: rgba(255, 255, 255, 0.08);
         --text-muted: #80808b;
+
     }
 
     /* Card Container */
     .profile-card {
         position: relative;
-        background: linear-gradient(165deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.012) 100%);
+        background: linear-gradient(180deg, rgba(239, 239, 239, 0.03), rgba(52, 52, 52, 0.01));
         border: 1px solid rgba(255, 255, 255, 0.09);
+        z-index: 2222;
+        isolation: isolate;
         border-radius: 18px;
         padding: 22px;
         margin-bottom: 16px;
         transition: border-color 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease;
-        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28);
-        backdrop-filter: blur(14px);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.05),
+            inset 0 -1px 0 rgba(255, 255, 255, 0.015),
+            0 12px 20px rgba(0, 0, 0, 0.22),
+            0 24px 44px rgba(0, 0, 0, 0.34);
+        backdrop-filter: blur(10px);
     }
 
     .profile-card:hover {
-        border-color: rgba(45, 215, 152, 0.35);
-        box-shadow: 0 18px 30px rgba(0, 0, 0, 0.36);
+        border-color: rgba(225, 225, 225, 0.16);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.07),
+            inset 0 -1px 0 rgba(255, 255, 255, 0.02),
+            0 16px 26px rgba(0, 0, 0, 0.28),
+            0 28px 50px rgba(0, 0, 0, 0.4);
         transform: translateY(-1px);
     }
 
-    .card-glow {
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        /*background: radial-gradient(circle at center, rgba(0, 255, 170, 0.32) 0%, transparent 70%);*/
-        opacity: 0;
-        transition: opacity 0.5s;
-        pointer-events: none;
-        z-index: 0;
-    }
 
     .profile-card:hover .card-glow {
         opacity: 0.09;
@@ -202,6 +202,7 @@
         color: #fff;
         letter-spacing: -0.4px;
         line-height: 1.05;
+        margin-bottom: 1rem;
     }
 
     .profile-version {
@@ -249,6 +250,8 @@
         font-weight: 800;
         letter-spacing: 0.8px;
         border: 1px solid transparent;
+        box-shadow: -20px 10px 1rem 0.3rem rgba(0, 0, 0, 0.25) inset;
+
         white-space: nowrap;
     }
 
@@ -256,6 +259,7 @@
         background: rgba(45, 215, 152, 0.14);
         color: #3ce4a5;
         border-color: rgba(45, 215, 152, 0.35);
+        border-top-color: rgba(8, 243, 155, 0.36);
     }
 
     .status-pill.idle {
@@ -305,10 +309,13 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 10px;
         padding: 12px;
-        background: rgba(0, 0, 0, 0.22);
+        background: rgba(14, 14, 14, 0.34);
         border-radius: 12px;
         margin-bottom: 14px;
         border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.03),
+            0 8px 18px rgba(0, 0, 0, 0.22);
     }
 
     .res-item {
@@ -317,7 +324,11 @@
         gap: 10px;
         padding: 9px 10px;
         border-radius: 10px;
-        background: rgba(255, 255, 255, 0.02);
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.03);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.02),
+            0 6px 12px rgba(0, 0, 0, 0.14);
         min-width: 0;
     }
 
@@ -400,7 +411,10 @@
         border-radius: 12px;
         background: rgba(10, 10, 14, 0.98);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.04),
+            0 14px 26px rgba(0, 0, 0, 0.42),
+            0 28px 52px rgba(0, 0, 0, 0.34);
         z-index: 999;
     }
 
@@ -435,6 +449,9 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.03),
+            0 4px 10px rgba(0, 0, 0, 0.14);
     }
 
     .util-btn i,
@@ -455,18 +472,42 @@
     }
 
     .action-enable {
-        border-color: rgba(45, 215, 152, 0.7);
-        background: linear-gradient(180deg, rgba(45, 215, 152, 0.25), rgba(45, 215, 152, 0.11));
+        border-color: rgba(13, 252, 164, 0.7);
+        border-top-color: rgba(149, 241, 205, 0.82);
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 38%),
+            linear-gradient(180deg, rgba(83, 229, 175, 0.37), rgba(67, 115, 98, 0.37));
         color: #eafff5;
-        box-shadow: 0 0 0 1px rgba(45, 215, 152, 0.25), 0 10px 24px -14px rgba(45, 215, 152, 0.9);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.16),
+            inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+            0 0 0 1px rgba(45, 215, 152, 0.26),
+            0 8px 18px rgba(10, 40, 28, 0.35),
+            0 16px 30px -16px rgba(45, 215, 152, 0.38);
     }
 
     .action-enable:hover {
         color: #ffffff;
         border-color: rgba(45, 215, 152, 0.95);
-        background: linear-gradient(180deg, rgba(45, 215, 152, 0.36), rgba(45, 215, 152, 0.17));
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.01) 40%),
+            linear-gradient(180deg, rgba(45, 215, 152, 0.4), rgba(45, 215, 152, 0.18));
         transform: translateY(-1px);
-        box-shadow: 0 0 0 1px rgba(45, 215, 152, 0.38), 0 14px 26px -14px rgba(45, 215, 152, 1);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.2),
+            inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+            0 0 0 1px rgba(45, 215, 152, 0.38),
+            0 10px 20px rgba(10, 40, 28, 0.4),
+            0 18px 34px -16px rgba(45, 215, 152, 0.95);
+    }
+
+    .action-enable:active {
+        transform: translateY(0);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.1),
+            inset 0 2px 6px rgba(0, 0, 0, 0.25),
+            0 0 0 1px rgba(45, 215, 152, 0.3),
+            0 6px 14px rgba(10, 40, 28, 0.28);
     }
 
 
@@ -505,8 +546,11 @@
         margin-top: 12px;
         padding: 10px 12px;
         border-radius: 10px;
-        background: rgba(255, 255, 255, 0.02);
+        background: rgba(54, 54, 54, 0.18);
         border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.03),
+            0 10px 18px rgba(0, 0, 0, 0.2);
         display: flex;
         flex-direction: column;
         gap: 3px;
@@ -537,7 +581,8 @@
         padding: 8px 10px;
         border-radius: 8px;
         border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(0, 0, 0, 0.22);
+        background: rgba(7, 8, 12, 0.9);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
         max-height: 130px;
         overflow: auto;
         font-size: 11px;
