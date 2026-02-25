@@ -76,7 +76,7 @@
 
     body {
         margin: 0;
-        background-color: #040406;
+        background-color: #050608;
         font-family: 'Inter', sans-serif;
         display: flex;
         align-items: flex-start;
@@ -88,19 +88,41 @@
         isolation: isolate;
     }
 
-    .bg {
 
+    body::after {
+        content: "";
         position: fixed;
         inset: 0;
-        z-index: -1000;
+        z-index: -1;
         pointer-events: none;
-        background-image: radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 28%, rgba(0, 0, 0, 0) 55%);
-        radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.5) 78%, rgba(0, 0, 0, 0.78) 100%),
-        linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+        opacity: 1;
+        background-image:
+            linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        background-size:
+            240px 240px,
+            240px 240px;
+        background-position:
+            center center,
+            center center;
+        animation: gridDrift 38s ease-in-out infinite alternate;
+        mask-image:
+            radial-gradient(circle at 50% 46%, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.92) 58%, rgba(0, 0, 0, 0.62) 82%, rgba(0, 0, 0, 0.28) 100%);
+        -webkit-mask-image:
+            radial-gradient(circle at 50% 46%, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.92) 58%, rgba(0, 0, 0, 0.62) 82%, rgba(0, 0, 0, 0.28) 100%);
+    }
 
-        background-size: auto, auto, 28px 28px, 28px 28px;
-        background-position: center center, center center, center center, center center;
+    @keyframes gridDrift {
+        from {
+            background-position:
+                center center,
+                center center;
+        }
+        to {
+            background-position:
+                calc(50% + 28px) calc(50% + 28px),
+                calc(50% + 28px) calc(50% + 28px);
+        }
     }
 
     .launcher-shell {
