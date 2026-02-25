@@ -1,6 +1,6 @@
 {{ define "profile-row" }}
 <div class="profile-card" data-profile-id="{{ .ID }}" data-active-job-id="{{ .ActiveJobID }}">
-    <div class="card-glow"></div>
+
 
     <div class="card-content">
         <div class="card-header">
@@ -142,6 +142,7 @@
         position: relative;
         background: linear-gradient(165deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.012) 100%);
         border: 1px solid rgba(255, 255, 255, 0.09);
+        z-index: 2222;
         border-radius: 18px;
         padding: 22px;
         margin-bottom: 16px;
