@@ -6,7 +6,7 @@
     <link rel="icon" href="/static/favicon.ico"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>Kimmio Launcher</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap"
           rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
@@ -63,6 +63,7 @@
         --text-main: #eeeeee;
         --text-low: white;
         --text-dim: #71717a;
+        --ui-font: 'Kumbh Sans', sans-serif;
         --mono: 'JetBrains Mono', monospace;
 
         color: var(--text-main) !important;
@@ -74,10 +75,17 @@
         -webkit-font-smoothing: antialiased;
     }
 
+    button,
+    input,
+    select,
+    textarea {
+        font: inherit;
+    }
+
     body {
         margin: 0;
         background-color: #050608;
-        font-family: 'Inter', sans-serif;
+        font-family: var(--ui-font);
         display: flex;
         align-items: flex-start;
         justify-content: center;
