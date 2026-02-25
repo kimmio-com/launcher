@@ -20,32 +20,6 @@
             </div>
         </div>
 
-        <div class="card-body">
-            <div class="resource-grid">
-                <div class="res-item" title="Memory Allocation">
-                    <i class="fa-solid fa-memory"></i>
-                    <div class="res-meta">
-                        <span class="res-label">RAM</span>
-                        <span class="res-val">{{ if .Resources.Limits.Memory }}{{ .Resources.Limits.Memory }}{{ else }}Auto{{ end }}</span>
-                    </div>
-                </div>
-                <div class="res-item" title="Processing Power">
-                    <i class="fa-solid fa-microchip"></i>
-                    <div class="res-meta">
-                        <span class="res-label">CPU</span>
-                        <span class="res-val">{{ if gt .Resources.Limits.CPUs 0.0 }}{{ printf "%.1f" .Resources.Limits.CPUs }}{{ else }}1.0{{ end }} cores</span>
-                    </div>
-                </div>
-                <div class="res-item" title="Network Access">
-                    <i class="fa-solid fa-ethernet"></i>
-                    <div class="res-meta">
-                        <span class="res-label">PORT</span>
-                        <span class="res-val">{{ range .Ports }}{{ .Host }}{{ end }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div class="card-footer">
             <div class="action-primary">
                 {{ if .Running }}
@@ -125,11 +99,45 @@
             </button>
             {{ end }}
         </div>
+
+
+        <div class="card-body">
+            <div class="resource-grid">
+                <div class="res-item" title="Memory Allocation">
+                    <i class="fa-solid fa-memory"></i>
+                    <div class="res-meta">
+                        <span class="res-label">RAM</span>
+                        <span class="res-val">{{ if .Resources.Limits.Memory }}{{ .Resources.Limits.Memory }}{{ else }}Auto{{ end }}</span>
+                    </div>
+                </div>
+                <div class="res-item" title="Processing Power">
+                    <i class="fa-solid fa-microchip"></i>
+                    <div class="res-meta">
+                        <span class="res-label">CPU</span>
+                        <span class="res-val">{{ if gt .Resources.Limits.CPUs 0.0 }}{{ printf "%.1f" .Resources.Limits.CPUs }}{{ else }}1.0{{ end }} cores</span>
+                    </div>
+                </div>
+                <div class="res-item" title="Network Access">
+                    <i class="fa-solid fa-ethernet"></i>
+                    <div class="res-meta">
+                        <span class="res-label">PORT</span>
+                        <span class="res-val">{{ range .Ports }}{{ .Host }}{{ end }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
     </div>
 </div>
 
 <style>
 
+    .card-body
+    {
+        padding-top: 1rem;
+    }
     :root {
         --primary-glow: #2dd798;
         --bg-dark: #0a0a0c;
