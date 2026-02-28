@@ -466,6 +466,8 @@ func buildComposeYAML() string {
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      ALLOW_LOCALHOST_DOMAIN_IN_PROD: true
+      ALLOW_HTTP_DOMAIN_IN_PROD: true
     ports:
       - "${APP_PORT}:${APP_PORT}"
     networks:

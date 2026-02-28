@@ -10,6 +10,15 @@ go run ./cmd/launcher
 
 Open `http://localhost:7331` (or the fallback port written to `data/launcher-port`).
 
+## Terminal Commands
+
+```bash
+go run ./cmd/launcher profile list
+go run ./cmd/launcher profile <name> info
+go run ./cmd/launcher profile <name> update [version]
+go run ./cmd/launcher profile <name> delete
+```
+
 ## Build
 
 ```bash
