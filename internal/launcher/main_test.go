@@ -3,6 +3,7 @@ package launcher
 import (
 	"launcher/internal/config"
 	"net"
+	"net/http"
 	"strconv"
 	"testing"
 	"time"
@@ -80,5 +81,40 @@ func TestResolveListenPortInvalidInput(t *testing.T) {
 	got := resolveListenPort(0, 0)
 	if got != 7331 {
 		t.Fatalf("expected default port 7331, got %s", strconv.Itoa(got))
+	}
+}
+
+func TestShouldReuseExistingLauncher(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/__livereload", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+	})
+	ln, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatalf("listen on random port: %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	srv := &http.Server{Handler: mux}
+	go func() { _ = srv.Serve(ln) }()
+	defer srv.Close()
+
+	if !shouldReuseExistingLauncher(port) {
+		t.Fatalf("expected busy launcher port %d to be reused", port)
+	}
+}
+
+func TestShouldNotReuseNonLauncherBusyPort(t *testing.T) {
+	ln, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatalf("listen on random port: %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	srv := &http.Server{Handler: http.NotFoundHandler()}
+	go func() { _ = srv.Serve(ln) }()
+	defer srv.Close()
+
+	if shouldReuseExistingLauncher(port) {
+		t.Fatalf("expected non-launcher busy port %d not to be reused", port)
 	}
 }

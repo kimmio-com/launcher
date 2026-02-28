@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"log"
+	"os"
 
 	"launcher/internal/config"
 	"launcher/internal/launcher"
@@ -19,6 +20,9 @@ func main() {
 	log.Printf("Kimmio Launcher %s (%s)", appVersion, gitCommit)
 	cfg := config.Load(buildMode)
 	launcher.SetBuildInfo(appVersion, gitCommit)
+	if handled, exitCode := launcher.RunCLI(cfg, os.Args[1:], os.Stdout, os.Stderr); handled {
+		os.Exit(exitCode)
+	}
 	if err := launcher.Run(embedded, cfg); err != nil {
 		log.Fatal(err)
 	}

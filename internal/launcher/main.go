@@ -56,7 +56,19 @@ func NewServer(cfg config.Config) *Server {
 func Run(embedded fs.FS, cfg config.Config) error {
 	appCfg = cfg
 	initStructuredLogger(cfg.DataDir)
-	port := resolveListenPort(cfg.ListenPort, cfg.PortSearchRange)
+	preferredPort := normalizeListenPort(cfg.ListenPort)
+	if shouldReuseExistingLauncher(preferredPort) {
+		launcherURL := fmt.Sprintf("http://localhost:%d", preferredPort)
+		writeLauncherPortFile(preferredPort)
+		printStartupBanner(launcherURL)
+		logInfo("server_reuse_existing_instance", map[string]any{
+			"port": preferredPort,
+			"url":  launcherURL,
+		})
+		openBrowser(preferredPort)
+		return nil
+	}
+	port := resolveListenPort(preferredPort, cfg.PortSearchRange)
 	writeLauncherPortFile(port)
 
 	ts, err := NewTemplatesFromFS(embedded, "templates")
@@ -220,9 +232,7 @@ func writeLauncherPortFile(currentPort int) {
 }
 
 func resolveListenPort(preferredPort, searchRange int) int {
-	if preferredPort <= 0 {
-		preferredPort = 7331
-	}
+	preferredPort = normalizeListenPort(preferredPort)
 	if isTCPPortAvailable(preferredPort) {
 		return preferredPort
 	}
@@ -234,6 +244,39 @@ func resolveListenPort(preferredPort, searchRange int) int {
 	}
 	logWarn("listen_port_unavailable_range", map[string]any{"preferred_port": preferredPort, "search_range": searchRange})
 	return preferredPort
+}
+
+func normalizeListenPort(preferredPort int) int {
+	if preferredPort <= 0 {
+		return 7331
+	}
+	return preferredPort
+}
+
+func shouldReuseExistingLauncher(preferredPort int) bool {
+	preferredPort = normalizeListenPort(preferredPort)
+	if isTCPPortAvailable(preferredPort) {
+		return false
+	}
+	return isLauncherLiveReloadReachable(preferredPort)
+}
+
+func isLauncherLiveReloadReachable(port int) bool {
+	client := http.Client{Timeout: 700 * time.Millisecond}
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://127.0.0.1:%d/__livereload", port), nil)
+	if err != nil {
+		return false
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+	contentType := strings.ToLower(strings.TrimSpace(resp.Header.Get("Content-Type")))
+	return strings.Contains(contentType, "text/event-stream")
 }
 
 func defaultProfile() ProfileRequest {
